@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AAV 유니폼 주문 관리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#16324F; --navy-deep:#0E2339; --navy-soft:#E9EFF4;
+    --court:#F4F7FA; --line:#D8E1E8; --ink:#22262B; --sub:#5B6672;
+    --coral:#E8542F; --coral-soft:#FCE6DE; --coral-line:#F3C4AD;
+    --amber:#946200; --amber-soft:#FFF3D6; --amber-line:#F0DBA0;
+    --green:#1D7A4C; --green-soft:#E1F3E9;
+    --card:#FFFFFF;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--court);color:var(--ink);font-family:'Pretendard','Apple SD Gothic Neo',sans-serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:880px;margin:0 auto;padding:32px 20px 100px;}
+
+  header.top{margin-bottom:28px;}
+  header.top .tag{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--coral);}
+  header.top h1{margin:8px 0 6px;font-size:26px;font-weight:800;color:var(--navy-deep);}
+  header.top p{margin:0;font-size:14px;color:var(--sub);line-height:1.6;}
+
+  .stats{display:flex;gap:10px;margin:20px 0;}
+  .stat{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
+  .stat .n{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--navy-deep);}
+  .stat .l{font-size:12.5px;color:var(--sub);margin-top:2px;}
+
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin:24px 0 14px;}
+  .toolbar h2{font-size:15px;font-weight:700;color:var(--navy-deep);margin:0;}
+  .btn{font-family:'Pretendard',sans-serif;font-size:13.5px;font-weight:600;border-radius:8px;padding:9px 16px;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--navy);transition:background .15s;}
+  .btn:hover{background:var(--navy-soft);}
+  .btn.primary{background:var(--navy);color:#fff;border-color:var(--navy);}
+  .btn.primary:hover{background:var(--navy-deep);}
+  .btn.coral{background:var(--coral);color:#fff;border-color:var(--coral);}
+  .btn.coral:hover{background:#C7431F;}
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--sub);}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .btn.sm{padding:6px 11px;font-size:12.5px;}
+
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;border-radius:100px;padding:3px 10px;white-space:nowrap;}
+  .badge.auto{background:var(--navy-soft);color:var(--navy);border:1px solid var(--line);}
+  .badge.ai{background:var(--amber-soft);color:var(--amber);border:1px solid var(--amber-line);}
+  .badge.manual{background:var(--coral-soft);color:var(--coral);border:1px solid var(--coral-line);}
+  .badge.done{background:var(--green-soft);color:var(--green);border:1px solid #B9E2C9;}
+
+  .empty{border:1.5px dashed var(--line);border-radius:12px;padding:30px 20px;text-align:center;color:var(--sub);font-size:13.5px;line-height:1.6;}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden;}
+  .card-head{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;}
+  .card-head:hover{background:#FAFBFC;}
+  .card-title{flex:1;min-width:0;}
+  .card-title .nm{font-size:14.5px;font-weight:700;color:var(--ink);}
+  .card-title .sub{font-size:12px;color:var(--sub);margin-top:2px;}
+  .chev{color:var(--sub);font-size:13px;transition:transform .15s;flex-shrink:0;}
+  .card.open .chev{transform:rotate(90deg);}
+
+  .progress{display:flex;gap:3px;padding:0 16px 14px;}
+  .progress i{flex:1;height:5px;border-radius:3px;background:var(--line);}
+  .progress i.past{background:var(--navy);}
+  .progress i.now{background:var(--coral);}
+
+  .card-body{display:none;border-top:1px solid var(--line);padding:16px;}
+  .card.open .card-body{display:block;}
+
+  .stage-panel{background:var(--court);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px;}
+  .stage-panel .sp-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;}
+  .stage-panel .sp-head h3{margin:0;font-size:14px;font-weight:700;color:var(--navy-deep);}
+  .field{margin-bottom:10px;}
+  .field label{display:block;font-size:12.5px;font-weight:600;color:var(--sub);margin-bottom:5px;}
+  .field input,.field textarea,.field select{width:100%;border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13.5px;font-family:inherit;background:#fff;color:var(--ink);}
+  .field textarea{resize:vertical;min-height:56px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .check{display:flex;align-items:center;gap:8px;font-size:13.5px;padding:8px 0;cursor:pointer;}
+  .check input{width:16px;height:16px;}
+  .note{font-size:12.5px;color:var(--sub);line-height:1.55;margin:6px 0 0;}
+  .actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+
+  .log{margin-top:14px;}
+  .log h4{font-size:12px;font-weight:700;color:var(--sub);margin:0 0 6px;text-transform:none;}
+  .log ul{list-style:none;margin:0;padding:0;font-size:12.5px;color:var(--sub);}
+  .log li{padding:5px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;}
+  .log li:last-child{border-bottom:none;}
+  .log li .t{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9AA5AF;flex-shrink:0;white-space:nowrap;}
+
+  .quote-box{background:#fff;border:1.5px solid var(--navy);border-radius:10px;padding:18px;margin-top:10px;}
+  .quote-box .qh{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid var(--navy);padding-bottom:10px;margin-bottom:10px;}
+  .quote-box .qh .t{font-size:16px;font-weight:800;color:var(--navy-deep);}
+  .quote-box .qh .d{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--sub);}
+  .qtable{width:100%;font-size:13px;border-collapse:collapse;}
+  .qtable th{text-align:left;color:var(--sub);font-weight:600;font-size:12px;padding:6px 4px;border-bottom:1px solid var(--line);}
+  .qtable td{padding:7px 4px;border-bottom:1px solid var(--line);}
+  .qtable td.num{text-align:right;font-family:'JetBrains Mono',monospace;}
+  .qtotal{display:flex;justify-content:space-between;padding-top:10px;font-size:15px;font-weight:800;color:var(--navy-deep);}
+
+  .factory-info{display:flex;align-items:center;gap:8px;margin-top:10px;padding:9px 12px;background:#EEF3F7;border:1px solid var(--line);border-radius:8px;font-size:12.5px;color:var(--navy-deep);}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(14,35,57,.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:50;}
+  .modal-bg.show{display:flex;}
+  .modal{background:#fff;border-radius:14px;padding:24px;max-width:440px;width:100%;max-height:88vh;overflow-y:auto;}
+  .modal h2{margin:0 0 4px;font-size:17px;font-weight:800;color:var(--navy-deep);}
+  .modal .sub{font-size:12.5px;color:var(--sub);margin:0 0 16px;}
+
+  .save-alert{display:none;align-items:center;gap:10px;flex-wrap:wrap;background:var(--coral-soft);border:1px solid var(--coral-line);color:#8A2E17;border-radius:10px;padding:10px 14px;font-size:12.5px;font-weight:600;margin:-6px 0 14px;}
+  .save-alert.show{display:flex;}
+  .qarchive-item{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px;}
+
+  @media print{
+    .no-print{display:none !important;}
+    body{background:#fff;}
+    .card{border:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top no-print">
+    <div class="tag">AAV DESIGN STUDIO · ORDER PIPELINE</div>
+    <h1>커스텀 유니폼 주문 관리</h1>
+    <p>문의 접수부터 견적서 발송까지, 자동화 · AI보조 · 관리자 확인 단계를 한 화면에서 관리합니다.</p>
+  </header>
+
+  <div class="stats no-print">
+    <div class="stat"><div class="n" id="statActive">0</div><div class="l">진행중인 주문</div></div>
+    <div class="stat"><div class="n" id="statNeeds">0</div><div class="l">확인 대기중</div></div>
+    <div class="stat"><div class="n" id="statDone">0</div><div class="l">완료된 주문</div></div>
+  </div>
+
+  <div class="toolbar no-print">
+    <h2>진행중인 주문</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn" onclick="openServerSettings()">서버 연결 설정</button>
+      <button class="btn" onclick="openQuoteArchive()">견적서 보관함</button>
+      <button class="btn" onclick="exportBackup()">백업 다운로드</button>
+      <button class="btn" onclick="cleanupDoneOrders()">완료 주문 정리</button>
+      <label class="btn" style="cursor:pointer;margin:0;">백업 불러오기
+        <input type="file" accept=".json" onchange="importBackup(this)" style="display:none;">
+      </label>
+      <button class="btn" onclick="importFromSheet()">구글시트 최근 3건 불러오기</button>
+      <button class="btn" onclick="importDesignRequestsFromForm()">디자인 요청사항 매치 불러오기</button>
+      <button class="btn primary" onclick="openNewOrder()">+ 새 문의 접수</button>
+    </div>
+  </div>
+  <div class="save-alert no-print" id="saveAlert">
+    ⚠️ 방금 변경사항 저장에 실패했습니다. 새로고침하면 유실될 수 있어요 — 지금 백업을 받아두세요.
+    <button class="btn sm coral" onclick="exportBackup()">지금 백업 다운로드</button>
+  </div>
+  <p class="note no-print" id="storageNote" style="margin:-6px 0 14px;"></p>
+  <div id="activeList"></div>
+
+  <div class="toolbar no-print" style="margin-top:32px;">
+    <h2>완료된 주문</h2>
+  </div>
+  <div id="doneList"></div>
+
+</div>
+
+<div class="modal-bg no-print" id="newOrderModal">
+  <div class="modal">
+    <h2>새 문의 접수</h2>
+    <p class="sub"><span class="badge auto">자동</span> 챗봇/폼으로 접수된 문의를 대신 기록합니다.</p>
+    <div class="field"><label>고객/학교(팀)명</label><input id="f_customer" placeholder="예: 동아고등학교 배구부"></div>
+    <div class="field"><label>담당자 연락처</label><input id="f_contact" placeholder="010-0000-0000"></div>
+    <div class="field"><label>예상 수량</label><input id="f_qty" type="number" min="1" value="10"></div>
+    <p class="note" style="margin:-4px 0 10px;">정확한 가격은 견적서 단계에서 종류·원단 선택으로 자동 계산됩니다.</p>
+    <div class="field"><label>디자인 요청사항 (고객이 원하는 컬러/로고/느낌 등)</label><textarea id="f_note" placeholder="팀 컬러, 로고, 느낌, 참고 이미지 설명 등"></textarea></div>
+    <div class="actions">
+      <button class="btn ghost" onclick="closeNewOrder()">취소</button>
+      <button class="btn primary" onclick="createOrder()">접수 완료</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg no-print" id="editOrderModal">
+  <div class="modal">
+    <h2>주문 정보 수정</h2>
+    <input type="hidden" id="e_id">
+    <div class="field"><label>고객/학교(팀)명</label><input id="e_customer"></div>
+    <div class="field"><label>담당자 연락처</label><input id="e_contact"></div>
+    <div class="row2">
+      <div class="field"><label>수량</label><input id="e_qty" type="number" min="1"></div>
+      <div class="field"><label>종류</label>
+        <select id="e_itemType"><option value="상의">상의</option><option value="하의">하의</option><option value="상하의 세트">상하의 세트</option></select>
+      </div>
+    </div>
+    <div class="field"><label>디자인 요청사항 / 메모</label><textarea id="e_note"></textarea></div>
+    <div class="actions">
+      <button class="btn ghost" onclick="closeEditOrder()">취소</button>
+      <button class="btn primary" onclick="saveEditOrder()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg no-print" id="serverModal">
+  <div class="modal">
+    <h2>서버 연결 설정</h2>
+    <p class="sub">구글시트+Apps Script로 만든 웹앱 URL을 연결하면, 여기 저장되는 주문이 그 구글시트에도 실시간으로 기록되고 히스토리도 시트에서 그대로 확인할 수 있어요.</p>
+    <div class="field"><label>웹 앱 URL</label><input id="srv_url" placeholder="https://script.google.com/macros/s/.../exec"></div>
+    <p class="note" id="srvStatus" style="margin-top:-4px;"></p>
+    <div class="actions">
+      <button class="btn ghost" onclick="closeServerSettings()">닫기</button>
+      <button class="btn" onclick="testServerConnection()">연결 테스트</button>
+      <button class="btn primary" onclick="saveServerSettings()">저장 후 동기화</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg no-print" id="quoteArchiveModal">
+  <div class="modal" style="max-width:560px;">
+    <h2>견적서 보관함</h2>
+    <p class="sub">"발송 완료로 표시"한 견적서가 자동으로 여기 보관됩니다. 주문을 삭제하거나 "완료 주문 정리"를 실행해도 견적 기록은 이 보관함에 그대로 남아있어요.</p>
+    <input id="qa_search" placeholder="고객명 또는 견적번호로 검색" oninput="renderQuoteArchive()" style="width:100%;border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13.5px;font-family:inherit;margin-bottom:12px;">
+    <div id="quoteArchiveList"></div>
+    <div class="actions"><button class="btn ghost" onclick="closeQuoteArchive()">닫기</button></div>
+  </div>
+</div>
+<div id="qaHiddenRender" style="position:fixed;left:-9999px;top:0;"></div>
+
+<script>
+const STAGES = [
+  {key:'inquiry',  label:'문의 접수',   type:'auto'},
+  {key:'draft',    label:'디자인 초안', type:'ai'},
+  {key:'review',   label:'관리자 검토', type:'manual'},
+  {key:'confirm',  label:'고객 확정',   type:'manual'},
+  {key:'workorder',label:'작업지시서',  type:'manual'},
+  {key:'factory',  label:'공장 전달',   type:'manual'},
+  {key:'quote',    label:'견적서 발송', type:'auto'},
+];
+const STAGE_IDX = {};
+STAGES.forEach((s,i)=>{ STAGE_IDX[s.key]=i; });
+let viewStage = {}; // orderId -> stage index the admin is currently viewing/editing (defaults to live stage)
+const badgeHtml = t => t==='auto' ? '<span class="badge auto">자동</span>' : t==='ai' ? '<span class="badge ai">AI 보조</span>' : '<span class="badge manual">관리자 확인</span>';
+
+const PRICE_TABLE = {
+  '상의':       {base:40000, discount:35000, fabric:{'인타록':0,'싱글스판':0,'쿨에버':5000}},
+  '하의':       {base:25000, discount:20000, fabric:{'인타록':0,'싱글스판':0,'쿨에버':5000}},
+  '상하의 세트': {base:60000, discount:50000, fabric:{'인타록':0,'싱글스판':0,'쿨에버':10000}}
+};
+function getUnitPrice(o){
+  const t = PRICE_TABLE[o.itemType] || PRICE_TABLE['상하의 세트'];
+  const base = o.priceTier==='base' ? t.base : t.discount;
+  const surcharge = (t.fabric && t.fabric[o.fabric]) || 0;
+  return base + surcharge;
+}
+
+let orders = [];
+let quotesArchive = [];
+let openId = null;
+let storageBackend = 'local'; // 'cloud' | 'idb' | 'local' | 'memory' — decided once in loadOrders()
+const LS_KEY = 'aav-orders';
+const QUOTES_LS_KEY = 'aav-quotes';
+const SRV_KEY = 'aav-server-url';
+const hasCloudStorage = () => typeof window.storage !== 'undefined' && window.storage;
+
+// --- IndexedDB backend -------------------------------------------------
+// localStorage alone caps out around 5MB per origin, and this tool stores
+// design/work-order images as base64 inline on each order — a handful of
+// photos blows that budget and every save silently fails. IndexedDB has a
+// far larger quota (browser-managed, typically hundreds of MB+) and stores
+// structured data directly without the string-length ceiling, so it's the
+// primary local backend; localStorage is kept only as a last-resort fallback.
+const IDB_NAME = 'aav-order-manager';
+const IDB_VERSION = 1;
+let idbPromise = null;
+function idbOpen(){
+  if(idbPromise) return idbPromise;
+  idbPromise = new Promise((resolve, reject)=>{
+    if(!window.indexedDB){ reject(new Error('IndexedDB 미지원')); return; }
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if(!db.objectStoreNames.contains('orders')) db.createObjectStore('orders', {keyPath:'id'});
+      if(!db.objectStoreNames.contains('quotes')) db.createObjectStore('quotes', {keyPath:'id'});
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error || new Error('IndexedDB 열기 실패'));
+  });
+  return idbPromise;
+}
+async function idbGetAll(storeName){
+  const db = await idbOpen();
+  return new Promise((resolve, reject)=>{
+    const req = db.transaction(storeName, 'readonly').objectStore(storeName).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbReplaceAll(storeName, items){
+  const db = await idbOpen();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(storeName, 'readwrite');
+    const store = tx.objectStore(storeName);
+    store.clear();
+    items.forEach(item => store.put(item));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
+function getServerUrl(){
+  try{ return localStorage.getItem(SRV_KEY) || ''; }catch(e){ return ''; }
+}
+function setServerUrlLocal(url){
+  try{ localStorage.setItem(SRV_KEY, url); }catch(e){}
+}
+function openServerSettings(){
+  document.getElementById('srv_url').value = getServerUrl();
+  document.getElementById('srvStatus').textContent = getServerUrl() ? '현재 연결된 URL이 있습니다.' : '아직 연결된 서버가 없습니다 (로컬/클라우드 저장만 사용 중).';
+  document.getElementById('serverModal').classList.add('show');
+}
+function closeServerSettings(){ document.getElementById('serverModal').classList.remove('show'); }
+function jsonpRequest(url, timeoutMs){
+  return new Promise((resolve, reject)=>{
+    const cbName = 'aavCb_' + Date.now() + '_' + Math.floor(Math.random()*10000);
+    const script = document.createElement('script');
+    let done = false;
+    const cleanup = () => { try{ delete window[cbName]; }catch(e){} if(script.parentNode) script.parentNode.removeChild(script); };
+    window[cbName] = (data) => { done = true; cleanup(); resolve(data); };
+    script.onerror = () => { if(!done){ cleanup(); reject(new Error('요청 실패(잘못된 URL이거나 배포 권한 문제)')); } };
+    const sep = url.includes('?') ? '&' : '?';
+    script.src = url + sep + 'callback=' + cbName + '&t=' + Date.now();
+    document.body.appendChild(script);
+    setTimeout(()=>{ if(!done){ cleanup(); reject(new Error('응답 시간 초과')); } }, timeoutMs||8000);
+  });
+}
+async function testServerConnection(){
+  const url = document.getElementById('srv_url').value.trim();
+  const status = document.getElementById('srvStatus');
+  if(!url){ status.textContent = 'URL을 입력해주세요.'; return; }
+  if(!/\/exec(\?.*)?$/.test(url)){
+    status.textContent = '⚠️ URL이 "/exec"로 끝나지 않아요. 배포된 웹 앱 URL(끝이 /exec)을 넣어주세요. (편집기 URL이 아니에요)';
+    return;
+  }
+  status.textContent = '연결 확인 중...';
+  try{
+    const data = await jsonpRequest(url, 8000);
+    status.textContent = `✅ 연결 성공! 서버에 주문 ${Array.isArray(data)?data.length:0}건 있음. "저장 후 동기화"를 눌러주세요.`;
+  }catch(e){
+    status.textContent = `❌ 연결 실패: ${e.message}. 스크립트를 최신 코드로 다시 배포(새 버전)했는지 확인해주세요.`;
+  }
+}
+async function saveServerSettings(){
+  const url = document.getElementById('srv_url').value.trim();
+  setServerUrlLocal(url);
+  closeServerSettings();
+  if(url){ await syncToServer(); }
+  updateStorageNote();
+}
+async function syncToServer(){
+  const url = getServerUrl();
+  if(!url) return;
+  try{
+    await fetch(url, {
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({orders})
+    });
+  }catch(e){ console.error('서버 동기화 실패', e); }
+}
+async function loadFromServerIfConfigured(){
+  const url = getServerUrl();
+  if(!url) return false;
+  try{
+    const data = await jsonpRequest(url, 8000);
+    if(Array.isArray(data)){ orders = data; return true; }
+  }catch(e){ console.error('서버 불러오기 실패(JSONP), 로컬 데이터 사용', e); }
+  return false;
+}
+
+function setSaveAlert(ok){
+  const el = document.getElementById('saveAlert');
+  if(!el) return;
+  el.classList.toggle('show', !ok);
+}
+
+async function loadOrders(){
+  try{
+    if(hasCloudStorage()){
+      storageBackend = 'cloud';
+      const r = await window.storage.get(LS_KEY);
+      orders = r ? JSON.parse(r.value) : [];
+      const qr = await window.storage.get(QUOTES_LS_KEY);
+      quotesArchive = qr ? JSON.parse(qr.value) : [];
+    } else if(window.indexedDB){
+      storageBackend = 'idb';
+      orders = await idbGetAll('orders');
+      quotesArchive = await idbGetAll('quotes');
+      if(!orders.length && !quotesArchive.length){
+        // one-time migration from the old single-blob localStorage format
+        try{
+          const raw = localStorage.getItem(LS_KEY);
+          const legacy = raw ? JSON.parse(raw) : null;
+          if(Array.isArray(legacy) && legacy.length){
+            orders = legacy;
+            await idbReplaceAll('orders', orders);
+            localStorage.removeItem(LS_KEY);
+          }
+        }catch(e){ console.error('기존 로컬 데이터 이전 실패', e); }
+      }
+    } else {
+      storageBackend = 'local';
+      const raw = localStorage.getItem(LS_KEY);
+      orders = raw ? JSON.parse(raw) : [];
+      const qraw = localStorage.getItem(QUOTES_LS_KEY);
+      quotesArchive = qraw ? JSON.parse(qraw) : [];
+    }
+  }catch(e){
+    console.error('주문 불러오기 실패', e);
+    try{ const raw = localStorage.getItem(LS_KEY); orders = raw ? JSON.parse(raw) : []; storageBackend = 'local'; }
+    catch(e2){ orders = []; storageBackend = 'memory'; }
+  }
+  if(getServerUrl()) await loadFromServerIfConfigured();
+  render();
+}
+async function saveOrders(){
+  try{
+    if(storageBackend==='cloud') await window.storage.set(LS_KEY, JSON.stringify(orders));
+    else if(storageBackend==='idb') await idbReplaceAll('orders', orders);
+    else localStorage.setItem(LS_KEY, JSON.stringify(orders));
+    setSaveAlert(true);
+  }catch(e){
+    console.error('저장 실패', e);
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(orders)); setSaveAlert(true); }
+    catch(e2){ console.error('로컬 저장소 백업 저장도 실패', e2); setSaveAlert(false); }
+  }
+  if(getServerUrl()) syncToServer();
+}
+async function saveQuotesArchive(){
+  try{
+    if(storageBackend==='cloud') await window.storage.set(QUOTES_LS_KEY, JSON.stringify(quotesArchive));
+    else if(storageBackend==='idb') await idbReplaceAll('quotes', quotesArchive);
+    else localStorage.setItem(QUOTES_LS_KEY, JSON.stringify(quotesArchive));
+  }catch(e){ console.error('견적서 보관함 저장 실패', e); }
+}
+function exportBackup(){
+  const blob = new Blob([JSON.stringify(orders, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `aav_orders_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+function cleanupDoneOrders(){
+  const done = orders.filter(isDone);
+  if(!done.length){ alert('완료된 주문이 없습니다.'); return; }
+  if(!confirm(`완료된 주문 ${done.length}건을 백업 파일로 먼저 내보낸 뒤, 목록에서 삭제합니다.\n(이미지·파일이 포함된 완료 주문이 저장 용량을 많이 차지하니 정리하면 도움이 됩니다. 견적서 기록은 "견적서 보관함"에 별도로 남아있어요.)\n계속할까요?`)) return;
+  const blob = new Blob([JSON.stringify(done, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `aav_done_orders_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  orders = orders.filter(o=>!isDone(o));
+  saveOrders(); render();
+  alert('완료된 주문을 백업하고 목록에서 정리했습니다. 필요하면 "백업 불러오기"로 다시 불러올 수 있어요.');
+}
+function importBackup(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!Array.isArray(data)) throw new Error('invalid');
+      if(!confirm(`${data.length}건을 불러옵니다. 현재 목록에 이어서 추가할까요? (취소를 누르면 중단)`)) return;
+      const existingIds = new Set(orders.map(o=>o.id));
+      data.forEach(o=>{ if(!existingIds.has(o.id)) orders.push(o); });
+      saveOrders(); render();
+      alert('불러오기가 완료되었습니다.');
+    }catch(err){ alert('올바른 백업 파일이 아닙니다.'); }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function addLog(o, text){
+  o.log = o.log || [];
+  o.log.unshift({t: new Date().toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}), text});
+}
+
+function openNewOrder(){ document.getElementById('newOrderModal').classList.add('show'); }
+function closeNewOrder(){ document.getElementById('newOrderModal').classList.remove('show'); }
+
+function createOrder(){
+  const customer = document.getElementById('f_customer').value.trim();
+  if(!customer){ alert('고객/팀명을 입력해주세요'); return; }
+  const note = document.getElementById('f_note').value.trim();
+  const o = {
+    id: 'o'+Date.now(),
+    customer,
+    contact: document.getElementById('f_contact').value.trim(),
+    note,
+    qty: Number(document.getElementById('f_qty').value)||1,
+    itemType: '상하의 세트',
+    priceTier: 'discount',
+    fabric: '인타록',
+    optionCost: 0,
+    vat: false,
+    stageIdx: 1, // 0=inquiry already done automatically on submit
+    aiNote: note ? `[고객 요청사항] ${note}` : '',
+    draftImages: [],
+    referenceLinks: [],
+    reviewApproved:false,
+    customerConfirmed:false,
+    workOrder:{colorCode:'', font:'', sentToCustomer:false, confirmedByCustomer:false},
+    factory:{designSent:false, workOrderSent:false},
+    quoteGenerated:false, quoteSent:false,
+    log:[]
+  };
+  addLog(o, `자동 · 챗봇/폼을 통해 문의가 접수되어 주문이 생성됨${note ? ' (디자인 요청사항 자동 기록됨)' : ''}`);
+  orders.unshift(o);
+  saveOrders();
+  closeNewOrder();
+  ['f_customer','f_contact','f_note'].forEach(id=>document.getElementById(id).value='');
+  render();
+}
+
+function seedOrder(customer, contact, note, itemType, fabric, stageIdx){
+  const o = {
+    id: 'o'+Date.now()+Math.random().toString(36).slice(2,7),
+    customer, contact, note,
+    qty: 1, itemType, priceTier:'discount', fabric, optionCost:0, vat:false,
+    stageIdx,
+    aiNote: note ? `[고객 요청사항] ${note}` : '',
+    draftImages: [],
+    referenceLinks: [],
+    reviewApproved: stageIdx>2,
+    customerConfirmed: stageIdx>3,
+    workOrder:{colorCode:'', font:'', sentToCustomer: stageIdx>4, confirmedByCustomer: stageIdx>4},
+    factory:{designSent: stageIdx>5, workOrderSent: stageIdx>5},
+    quoteGenerated: stageIdx>=7, quoteSent: stageIdx>=7,
+    log:[]
+  };
+  addLog(o, '자동 · 구글시트 "유니폼 제작 현황"에서 가져옴');
+  return o;
+}
+
+function importFromSheet(){
+  const seeds = [
+    seedOrder('VERA', '010-7565-3035', '넥: 변형브이넥 · 원단: 쿨에버 · 디자인 진행중, 계약금 완료 (수량 확인 필요)', '상하의 세트', '쿨에버', 1),
+    seedOrder('OneShot', '0107827970', '넥: 라운드넥 · 원단: 싱글스판 · 제작 진행중, 입금 완료 (수량 확인 필요)', '상하의 세트', '싱글스판', 5),
+    seedOrder('APSIV (취소)', '010-5171-3633', '넥: 변형브이넥 · 원단: 싱글스판 · 시트상 디자인/제작/입금 전체 취소', '상하의 세트', '싱글스판', 7),
+  ];
+  let added = 0;
+  seeds.forEach(s=>{
+    if(orders.some(o=>o.customer===s.customer)) return;
+    orders.unshift(s);
+    added++;
+  });
+  saveOrders(); render();
+  alert(added>0 ? `${added}건을 새로 가져왔습니다.` : '이미 모두 불러온 상태입니다.');
+}
+
+const FORM_MATCHES = [
+  { key:'OneShot', deadline:'2026-09-18', neckType:'라운드',
+    design:'저희팀은 군인이 대부분으로 모여있는 팀이라 강인함을 추구하는 팀입니다! 가능하다면 색상은 어두운 계열 또는 군인느낌?(바탕이 군복느낌이라던가)이 나면서 이쁜 유니폼을 만들고 싶습니다! 저희팀 마크 추가해드리겠습니다! 글씨체는 조금 강렬하면서도 시인성있는 유니폼이였으면 좋겠습니다! 구글폼에 팀 마크가 업로드가 안되서 연락주시면 따로 보내드리겠습니다!',
+    links:[] },
+  { key:'APSIV', deadline:'2026-10-09', neckType:'인서트',
+    design:'한체대 구로고인 버건디 색으로 바꾸고 나머지 글씨와 로고는 검은색으로 하고 싶습니다. AAV만의 디자인을 자유롭게 넣어주셔도 좋을 것 같아요. (챗GPT랑 이야기한 결과라서 편하게 바꿔주셔도 좋을 것 같아요!!',
+    links:['https://drive.google.com/open?id=16h8l9e6fIKDV5zJyZepw9GXNQZbcgv13','https://drive.google.com/open?id=182yA06wR6ui0hbwfYjQ-DKDVyxhIMtF5','https://drive.google.com/open?id=1IXXGoUsmEFIaIh3if6zwrrlguOk6a4L-'] },
+  { key:'VERA', deadline:'2026-09-30', neckType:'인서트',
+    design:'저희는 교직원 배구 동아리 팀이고, 남여 모두 있는 팀입니다. 이전에는 흰색과 청보라색 반반의 유니폼 디자인을 하였으나, 어두운 색의 새로운 느낌으로 디자인하여 맞추고 싶습니다. 색은 검정색도 괜찮고 이런 남색 종류도 좋습니다. 만약 검정색으로 디자인한다면 포인트 되는 다른 색상이 있으면 좋겠습니다. 또한 옆구리?쪽에 선이 있는 디자인이면 좋을 것 같은데 남여 모두 입기에 무난한 디자인이면 좋을 것 같아요! 로고는 변경해주셔도 됩니다. 강한 느낌이 나면 좋을 것 같아요',
+    links:['https://drive.google.com/open?id=1DABT9V5hYkltVHZ7j2GHdN5e7PzhedrV','https://drive.google.com/open?id=1s4IIzyO9UKJBFGEPFxnfEIHCz_RSLNUg','https://drive.google.com/open?id=1at-t4IOc_AFVIRoSaQtztcJ2cwgzOpXe'] },
+];
+function importDesignRequestsFromForm(){
+  let matched = 0;
+  FORM_MATCHES.forEach(m=>{
+    const o = orders.find(x=>x.customer.includes(m.key));
+    if(!o) return;
+    ensureWorkOrderShape(o);
+    o.note = m.design;
+    o.aiNote = `[고객 요청사항] ${m.design}`;
+    o.referenceLinks = (m.links||[]).slice();
+    o.workOrder.dueDate = m.deadline;
+    o.workOrder.details.neckType = m.neckType;
+    addLog(o, '자동 · 구글폼 "유니폼 제작(응답)" 시트에서 디자인 요청사항·참고자료 매치하여 불러옴');
+    matched++;
+  });
+  saveOrders(); render();
+  alert(matched>0 ? `${matched}건에 디자인 요청사항을 매치했습니다.` : '매치할 주문을 찾지 못했습니다. 먼저 해당 주문을 만들어주세요.');
+}
+
+function toggleCard(id){ openId = openId===id ? null : id; render(); }
+
+function deleteOrder(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  if(!confirm(`"${o.customer}" 주문을 삭제할까요? 되돌릴 수 없습니다.`)) return;
+  orders = orders.filter(x=>x.id!==id);
+  if(openId===id) openId = null;
+  delete viewStage[id];
+  saveOrders(); render();
+}
+
+function openEditOrder(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  document.getElementById('e_id').value = o.id;
+  document.getElementById('e_customer').value = o.customer;
+  document.getElementById('e_contact').value = o.contact||'';
+  document.getElementById('e_qty').value = o.qty;
+  document.getElementById('e_itemType').value = o.itemType;
+  document.getElementById('e_note').value = o.note||'';
+  document.getElementById('editOrderModal').classList.add('show');
+}
+function closeEditOrder(){ document.getElementById('editOrderModal').classList.remove('show'); }
+function saveEditOrder(){
+  const id = document.getElementById('e_id').value;
+  const o = orders.find(x=>x.id===id);
+  if(!o) return;
+  const newCustomer = document.getElementById('e_customer').value.trim();
+  if(!newCustomer){ alert('고객/팀명을 입력해주세요'); return; }
+  o.customer = newCustomer;
+  o.contact = document.getElementById('e_contact').value.trim();
+  o.qty = Number(document.getElementById('e_qty').value)||1;
+  o.itemType = document.getElementById('e_itemType').value;
+  o.note = document.getElementById('e_note').value.trim();
+  addLog(o, '관리자 확인 · 주문 정보 수정');
+  saveOrders();
+  closeEditOrder();
+  render();
+}
+
+
+
+function currentStage(o){ return STAGES[o.stageIdx]; }
+function isDone(o){ return o.stageIdx >= STAGES.length; }
+
+function advance(o, logText){
+  o.stageIdx++;
+  addLog(o, logText);
+  saveOrders(); render();
+}
+
+function fmt(n){ return Number(n||0).toLocaleString('ko-KR'); }
+
+const SIZES = [70,75,80,85,90,95,100,105,110,115,120,125];
+const SUPPLIER = {
+  bizNo:'433-74-00119', name:'배구의모든것 (AAV)', ceo:'안지환',
+  address:'서울특별시 중구 정동길 3, 103호 올어바웃발리볼',
+  bizType:'도소매, 서비스', bizItem:'체육용품', contact:'010-3464-3469',
+  account:'우리은행 1005403084486 안지환(배구의모든것(AAV)) 대표자 번호 010-2834-7777'
+};
+
+function nextQuoteNo(){
+  const nums = orders.map(x=>x.quoteNo).filter(Boolean).concat(quotesArchive.map(x=>x.quoteNo).filter(Boolean));
+  return nums.length ? Math.max(...nums)+1 : 125;
+}
+function computeQuoteAmounts(o){
+  const unitPrice = getUnitPrice(o);
+  const subtotal = o.qty*unitPrice + o.optionCost;
+  const total = o.vat ? Math.round(subtotal*1.1) : subtotal;
+  const supplyAmt = o.vat ? Math.round(total/1.1) : total;
+  const taxAmt = total - supplyAmt;
+  return {unitPrice, subtotal, total, supplyAmt, taxAmt};
+}
+function renderQuoteBoxHtml(r, boxId){
+  return `<div class="quote-box" id="${boxId}">
+    <div class="qh"><span class="t">견적서</span><span class="d">NO. ${r.quoteNo}</span></div>
+    <p class="note" style="margin:0 0 8px;">${r.dateLabel} · 아래와 같이 견적합니다</p>
+    <table class="qtable" style="margin-bottom:10px;">
+      <tr><td style="width:50%;vertical-align:top;">
+        <b>공급자</b><br>사업자등록번호: ${SUPPLIER.bizNo}<br>상호: ${SUPPLIER.name} (${SUPPLIER.ceo})<br>주소: ${SUPPLIER.address}
+      </td><td style="vertical-align:top;">
+        업태: ${SUPPLIER.bizType}<br>업종: ${SUPPLIER.bizItem}<br>연락처: ${SUPPLIER.contact}<br>공급받는자: ${r.customer}
+      </td></tr>
+    </table>
+    <p class="note" style="margin:0 0 10px;">견적금액(부가세 포함): <b>일금 ${numberToKorean(r.total).replace('원','')}원정</b> (₩${fmt(r.total)})</p>
+    <table class="qtable">
+      <tr><th>품명 / 규격</th><th>수량</th><th>단가(VAT포함)</th><th>공급가액</th><th>세액</th></tr>
+      <tr><td>${r.itemType} · ${r.fabric} 원단</td><td>${r.qty}</td><td class="num">${fmt(r.unitPrice)}원</td><td class="num">${fmt(r.supplyAmt)}원</td><td class="num">${fmt(r.taxAmt)}원</td></tr>
+      ${r.optionCost>0?`<tr><td>추가 옵션</td><td>-</td><td>-</td><td class="num">${fmt(r.optionCost)}원</td><td>-</td></tr>`:''}
+      <tr><td colspan="5" style="text-align:center;color:var(--sub);">======이하여백======</td></tr>
+    </table>
+    <div class="qtotal"><span>합계</span><span>공급가액 ${fmt(r.supplyAmt)}원 + 세액 ${fmt(r.taxAmt)}원</span></div>
+    <p class="note" style="margin-top:10px;">단가는 부가세를 포함한 금액으로 표시 · ${SUPPLIER.account} (인)</p>
+  </div>`;
+}
+function archiveQuote(o){
+  const amounts = computeQuoteAmounts(o);
+  const record = {
+    id: 'q'+o.quoteNo, quoteNo: o.quoteNo, orderId: o.id,
+    customer: o.customer, contact: o.contact||'',
+    itemType: o.itemType, fabric: o.fabric, qty: o.qty,
+    unitPrice: amounts.unitPrice, optionCost: o.optionCost, vat: o.vat,
+    supplyAmt: amounts.supplyAmt, taxAmt: amounts.taxAmt, total: amounts.total,
+    date: new Date().toISOString(), dateLabel: formatKoreanDate()
+  };
+  const idx = quotesArchive.findIndex(q=>q.quoteNo===o.quoteNo);
+  if(idx>=0) quotesArchive[idx] = record; else quotesArchive.unshift(record);
+  saveQuotesArchive();
+}
+function formatKoreanDate(d){
+  d = d || new Date();
+  return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`;
+}
+function numberToKorean(n){
+  if(!n) return '영원';
+  const dig=['','일','이','삼','사','오','육','칠','팔','구'];
+  const unit=['','십','백','천'];
+  const big=['','만','억','조'];
+  function frag(x){
+    let s='';
+    const d=[Math.floor(x/1000)%10, Math.floor(x/100)%10, Math.floor(x/10)%10, x%10];
+    for(let i=0;i<4;i++){
+      if(d[i]>0) s += (d[i]===1 && i<3 ? '' : dig[d[i]]) + unit[i];
+    }
+    return s;
+  }
+  let groups=[], x=Math.round(n);
+  while(x>0){ groups.push(x%10000); x=Math.floor(x/10000); }
+  let result='';
+  for(let i=groups.length-1;i>=0;i--){ if(groups[i]>0) result += frag(groups[i]) + big[i]; }
+  return result+'원';
+}
+function ensureWorkOrderShape(o){
+  o.workOrder = o.workOrder || {};
+  const wo = o.workOrder;
+  wo.dueDate = wo.dueDate || '';
+  wo.sizeQty = wo.sizeQty || {top:{}, bottom:{}};
+  wo.sizeQty.top = wo.sizeQty.top || {}; wo.sizeQty.bottom = wo.sizeQty.bottom || {};
+  SIZES.forEach(s=>{ if(wo.sizeQty.top[s]===undefined) wo.sizeQty.top[s]=0; if(wo.sizeQty.bottom[s]===undefined) wo.sizeQty.bottom[s]=0; });
+  wo.details = wo.details || {};
+  ['sizeTag','heriTape','innerShorts','topFabric','bottomFabric','bottomPattern','neckType'].forEach(f=>{ if(wo.details[f]===undefined) wo.details[f]=''; });
+  wo.heatPrint = wo.heatPrint!==undefined ? wo.heatPrint : 'AAV';
+  wo.players = wo.players || [];
+  wo.shipping = wo.shipping || {address:'', name:'', phone:''};
+  wo.specialNote = wo.specialNote || '';
+  wo.colorCode = wo.colorCode || ''; wo.font = wo.font || '';
+  wo.files = wo.files || [];
+  wo.sentToCustomer = !!wo.sentToCustomer; wo.confirmedByCustomer = !!wo.confirmedByCustomer;
+}
+function captureWorkOrderInputs(id){
+  const o = orders.find(x=>x.id===id); if(!o) return;
+  ensureWorkOrderShape(o);
+  const wo = o.workOrder;
+  const g = k => document.getElementById(k+'_'+id);
+  if(g('wo_due')) wo.dueDate = g('wo_due').value;
+  SIZES.forEach(s=>{
+    if(g('wsz_top_'+s)) wo.sizeQty.top[s] = Number(g('wsz_top_'+s).value)||0;
+    if(g('wsz_bot_'+s)) wo.sizeQty.bottom[s] = Number(g('wsz_bot_'+s).value)||0;
+  });
+  ['sizeTag','heriTape','innerShorts','topFabric','bottomFabric','bottomPattern','neckType'].forEach(f=>{
+    if(g('wo_'+f)) wo.details[f] = g('wo_'+f).value;
+  });
+  if(g('wo_heat')) wo.heatPrint = g('wo_heat').value;
+  wo.players.forEach((p,i)=>{
+    const gi = k => document.getElementById(`${k}_${i}_${id}`);
+    if(gi('wp_name')) p.name = gi('wp_name').value;
+    if(gi('wp_num')) p.number = gi('wp_num').value;
+    if(gi('wp_st')) p.sizeTop = gi('wp_st').value;
+    if(gi('wp_sb')) p.sizeBottom = gi('wp_sb').value;
+    if(gi('wp_note')) p.note = gi('wp_note').value;
+  });
+  if(g('wo_addr')) wo.shipping.address = g('wo_addr').value;
+  if(g('wo_shname')) wo.shipping.name = g('wo_shname').value;
+  if(g('wo_shphone')) wo.shipping.phone = g('wo_shphone').value;
+  if(g('wo_special')) wo.specialNote = g('wo_special').value;
+}
+function addPlayer(id){
+  captureWorkOrderInputs(id);
+  const o = orders.find(x=>x.id===id);
+  o.workOrder.players.push({name:'', number:'', sizeTop:'', sizeBottom:'', note:''});
+  saveOrders(); render();
+}
+function removePlayer(id, idx){
+  captureWorkOrderInputs(id);
+  const o = orders.find(x=>x.id===id);
+  o.workOrder.players.splice(idx,1);
+  saveOrders(); render();
+}
+function copyWorkOrder(id){
+  const o = orders.find(x=>x.id===id); ensureWorkOrderShape(o);
+  const wo = o.workOrder;
+  const sizeLine = t => SIZES.map(s=>`${s}:${wo.sizeQty[t][s]||0}`).join(' ');
+  const players = wo.players.map((p,i)=>`${i+1}. ${p.name||''} #${p.number||''} (상${p.sizeTop||'-'}/하${p.sizeBottom||'-'}) ${p.note||''}`).join('\n');
+  const text = `[작업 지시서]\n팀명: ${o.customer}\n유니폼 종류: 배구 유니폼\n납기일: ${wo.dueDate||'미정'}\n상의 사이즈별 수량: ${sizeLine('top')}\n하의 사이즈별 수량: ${sizeLine('bottom')}\n사이즈텍: ${wo.details.sizeTag} / 헤리테이프: ${wo.details.heriTape} / 속바지: ${wo.details.innerShorts}\n상의원단: ${wo.details.topFabric} / 하의원단: ${wo.details.bottomFabric} / 하의패턴: ${wo.details.bottomPattern} / 넥타입: ${wo.details.neckType}\n열부착: ${wo.heatPrint}\n선수명단:\n${players}\n배송지: ${wo.shipping.address} (${wo.shipping.name}, ${wo.shipping.phone})\n특이사항: ${wo.specialNote}`;
+  navigator.clipboard.writeText(text).then(()=>alert('작업지시서 내용이 복사되었습니다'));
+}
+
+function renderProgress(o){
+  const idx = Math.min(o.stageIdx, STAGES.length-1);
+  return '<div class="progress">' + STAGES.map((s,i)=>{
+    let cls = i < idx ? 'past' : (i===idx && !isDone(o) ? 'now' : '');
+    return `<i class="${cls}"></i>`;
+  }).join('') + '</div>';
+}
+
+function stagePanel(o, targetIdx){
+  const maxIdx = Math.min(o.stageIdx, STAGES.length-1);
+  if(targetIdx===undefined) targetIdx = maxIdx;
+  const s = STAGES[targetIdx];
+  const isCurrent = (targetIdx === o.stageIdx);
+  const pastNote = !isCurrent ? `<p class="note" style="color:var(--sub);">이미 지난 단계입니다. 내용은 여전히 수정할 수 있어요.</p>` : '';
+
+  if(s.key==='inquiry'){
+    if(o.stageIdx===STAGE_IDX.inquiry) advance(o, '자동 · 접수 확인');
+    return '';
+  }
+
+  if(s.key==='draft'){
+    const images = o.draftImages || [];
+    const links = o.referenceLinks || [];
+    return `<div class="stage-panel">
+      <div class="sp-head"><h3>디자인 초안</h3>${badgeHtml('ai')}</div>
+      ${pastNote}
+      <p class="note">AI는 참고용 컨셉 메모까지만 제안합니다. 실제 도식화·컬러코드는 일러스트레이터에서 직접 작업해주세요.</p>
+      ${links.length ? `<div class="field"><label>고객 참고자료 (구글폼에서 자동 연결)</label>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          ${links.map((l,i)=>`<a href="${l}" target="_blank" rel="noopener" style="font-size:12.5px;color:var(--coral);">참고자료 ${i+1} 열기 ↗</a>`).join('')}
+        </div>
+      </div>` : ''}
+      <div class="field"><label>AI 제안 메모</label>
+        <textarea id="ai_${o.id}" placeholder="예: 팀 컬러 기반 그라디언트, 넘버 폰트 볼드체 추천">${o.aiNote||''}</textarea>
+      </div>
+      <div class="field">
+        <label>디자인 초안 이미지 업로드</label>
+        <input type="file" accept="image/*" multiple onchange="uploadDraftImage('${o.id}', this)">
+        ${images.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+          ${images.map((img,i)=>`<div style="position:relative;">
+            <img src="${img.dataUrl}" style="width:76px;height:76px;object-fit:cover;border-radius:8px;border:1px solid var(--line);">
+            <button class="btn ghost sm" style="position:absolute;top:-8px;right:-8px;background:var(--coral);color:#fff;border-radius:50%;width:20px;height:20px;padding:0;font-size:10px;line-height:1;" onclick="removeDraftImage('${o.id}',${i})" aria-label="삭제">✕</button>
+          </div>`).join('')}
+        </div>` : `<p class="note">업로드된 이미지가 없습니다.</p>`}
+      </div>
+      <div class="actions">
+        <button class="btn sm" onclick="suggestAi('${o.id}')">AI 제안 받기</button>
+        ${isCurrent
+          ? `<button class="btn sm primary" onclick="saveAiNote('${o.id}')">메모 저장하고 검토 요청</button>`
+          : `<button class="btn sm primary" onclick="saveAiNote('${o.id}')">메모 저장</button>`}
+      </div>
+    </div>`;
+  }
+
+  if(s.key==='review'){
+    return `<div class="stage-panel">
+      <div class="sp-head"><h3>관리자 검토·승인</h3>${badgeHtml('manual')}</div>
+      ${pastNote}
+      <p class="note">시안을 확인하고 승인하면 고객에게 자동으로 전송 알림이 기록됩니다.</p>
+      ${isCurrent ? `<div class="actions">
+        <button class="btn sm coral" onclick="rejectDraft('${o.id}')">반려 (초안으로 되돌리기)</button>
+        <button class="btn sm primary" onclick="approveDraft('${o.id}')">승인 · 고객에 전송</button>
+      </div>` : `<p class="note">승인 상태: ${o.reviewApproved ? '승인됨' : '대기중'}. 되돌리려면 <button class="btn ghost sm" onclick="rejectDraft('${o.id}')">초안으로 되돌리기</button></p>`}
+    </div>`;
+  }
+
+  if(s.key==='confirm'){
+    return `<div class="stage-panel">
+      <div class="sp-head"><h3>고객 확정</h3>${badgeHtml('manual')}</div>
+      ${pastNote}
+      <p class="note">고객과 통화·카톡으로 최종 컨펌을 받은 뒤 체크해주세요.</p>
+      <label class="check"><input type="checkbox" ${o.customerConfirmed?'checked':''} onchange="confirmCustomer('${o.id}', this.checked)"> 고객 최종 컨펌 완료</label>
+    </div>`;
+  }
+
+  if(s.key==='workorder'){
+    ensureWorkOrderShape(o);
+    const wo = o.workOrder;
+    return `<div class="stage-panel">
+      <div class="sp-head"><h3>작업지시서 확인</h3>${badgeHtml('manual')}</div>
+      ${pastNote}
+      <p class="note">작성된 작업지시서 파일을 업로드하고, 고객에게 전송했는지만 체크해주세요.</p>
+
+      <div class="row2">
+        <div class="field"><label>팀명</label><input value="${o.customer}" disabled></div>
+        <div class="field"><label>납기일</label><input id="wo_due_${o.id}" type="date" value="${wo.dueDate}"></div>
+      </div>
+
+      <div class="field">
+        <label>작성된 작업지시서 파일 업로드 (사진/PDF/엑셀 등)</label>
+        <input type="file" accept="image/*,.pdf,.xlsx,.xls,.doc,.docx" multiple onchange="uploadWorkOrderFile('${o.id}', this)">
+        ${wo.files && wo.files.length ? `<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+          ${wo.files.map((f,i)=>`<div style="display:flex;align-items:center;gap:8px;">
+            <a href="${f.dataUrl}" download="${f.name}" style="font-size:12.5px;color:var(--navy);flex:1;">📎 ${f.name}</a>
+            <button class="btn ghost sm" style="color:var(--coral)" onclick="removeWorkOrderFile('${o.id}',${i})">삭제</button>
+          </div>`).join('')}
+        </div>` : `<p class="note">업로드된 파일이 없습니다.</p>`}
+      </div>
+
+      <div class="actions">
+        <button class="btn sm primary" onclick="saveWorkOrder('${o.id}')">납기일 저장</button>
+      </div>
+
+      <label class="check"><input type="checkbox" ${wo.sentToCustomer?'checked':''} onchange="setWO('${o.id}','sentToCustomer',this.checked)"> 작업지시서 전송함</label>
+      <p class="note">전송 여부만 체크하면 다음 단계로 진행됩니다.</p>
+    </div>`;
+  }
+
+  if(s.key==='factory'){
+    return `<div class="stage-panel">
+      <div class="sp-head"><h3>공장 전달</h3>${badgeHtml('manual')}</div>
+      ${pastNote}
+      <div class="factory-info">🏭 카카스포츠 · 정현태 디자이너 · <a href="tel:010-7611-8226" style="color:var(--navy)">010-7611-8226</a></div>
+      <p class="note">디자인파일 + 작업지시서는 카카스포츠 단체 톡방으로 직접 전달해주세요(자동 전송 안 함).</p>
+      <label class="check"><input type="checkbox" ${o.factory.designSent?'checked':''} onchange="setFactory('${o.id}','designSent',this.checked)"> 디자인 파일 전달 완료</label>
+      <label class="check"><input type="checkbox" ${o.factory.workOrderSent?'checked':''} onchange="setFactory('${o.id}','workOrderSent',this.checked)"> 작업지시서 전달 완료</label>
+    </div>`;
+  }
+
+  if(s.key==='quote'){
+    const {unitPrice, total, supplyAmt, taxAmt} = computeQuoteAmounts(o);
+    if(!o.quoteNo) o.quoteNo = nextQuoteNo();
+    const types = Object.keys(PRICE_TABLE);
+    const fabrics = Object.keys(PRICE_TABLE[o.itemType].fabric);
+    return `<div class="stage-panel">
+      <div class="sp-head"><h3>견적서 발송</h3>${badgeHtml('auto')}</div>
+      ${pastNote}
+      <div class="row2">
+        <div class="field"><label>종류</label>
+          <select onchange="updateQuoteField('${o.id}','itemType',this.value)">
+            ${types.map(t=>`<option value="${t}" ${t===o.itemType?'selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="field"><label>수량</label><input type="number" value="${o.qty}" oninput="updateQuoteField('${o.id}','qty',this.value)"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>가격 기준</label>
+          <select onchange="updateQuoteField('${o.id}','priceTier',this.value)">
+            <option value="discount" ${o.priceTier==='discount'?'selected':''}>서배협 할인가</option>
+            <option value="base" ${o.priceTier==='base'?'selected':''}>기본가</option>
+          </select>
+        </div>
+        <div class="field"><label>원단</label>
+          <select onchange="updateQuoteField('${o.id}','fabric',this.value)">
+            ${fabrics.map(f=>`<option value="${f}" ${f===o.fabric?'selected':''}>${f} 원단</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>추가 옵션 금액(원, 로고 추가 등 수동 입력)</label><input type="number" value="${o.optionCost}" oninput="updateQuoteField('${o.id}','optionCost',this.value)"></div>
+      <label class="check"><input type="checkbox" ${o.vat?'checked':''} onchange="updateQuoteField('${o.id}','vat',this.checked)"> 단가에 부가세 10% 포함</label>
+      <p class="note">종류·가격기준·원단 선택으로 단가가 자동 계산됩니다 → <b>${fmt(unitPrice)}원</b></p>
+
+      ${renderQuoteBoxHtml({quoteNo:o.quoteNo, customer:o.customer, itemType:o.itemType, fabric:o.fabric, qty:o.qty, unitPrice, optionCost:o.optionCost, supplyAmt, taxAmt, total, dateLabel:formatKoreanDate()}, 'quoteBox_'+o.id)}
+      <div class="actions">
+        <button class="btn sm" onclick="copyQuote('${o.id}')">견적 내용 복사</button>
+        <button class="btn sm" onclick="downloadQuotePDF('${o.id}')">PDF 다운로드</button>
+        <button class="btn sm primary" onclick="sendQuote('${o.id}')">발송 완료로 표시</button>
+      </div>
+      <p class="note">종류·수량만 선택하면 단가·총액이 자동 계산됩니다. 실제 카톡/이메일 발송은 버튼으로 완료 표시해주세요.</p>
+    </div>`;
+  }
+  return '';
+}
+
+function resizeImageFile(file, maxW, quality){
+  maxW = maxW || 900; quality = quality || 0.72;
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if(w > maxW){ h = Math.round(h * maxW / w); w = maxW; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function uploadDraftImage(id, input){
+  const o = orders.find(x=>x.id===id);
+  if(!o || !input.files.length) return;
+  o.draftImages = o.draftImages || [];
+  const files = Array.from(input.files);
+  for(const f of files){
+    try{
+      const dataUrl = await resizeImageFile(f);
+      o.draftImages.push({name:f.name, dataUrl});
+    }catch(e){ console.error(e); }
+  }
+  addLog(o, `AI 보조 · 디자인 초안 이미지 ${files.length}개 업로드`);
+  saveOrders(); render();
+}
+function removeDraftImage(id, idx){
+  const o = orders.find(x=>x.id===id);
+  if(!o || !o.draftImages) return;
+  o.draftImages.splice(idx, 1);
+  saveOrders(); render();
+}
+function suggestAi(id){
+  const o = orders.find(x=>x.id===id);
+  const palettes = ['팀 메인 컬러를 넘버·목 라인에 포인트로 사용', '그라디언트 배색 + 사이드 라인 대비', '클래식 투톤 배색 + 볼드 넘버 폰트'];
+  const pick = palettes[Math.floor(Math.random()*palettes.length)];
+  document.getElementById('ai_'+id).value = `[AI 참고 제안] ${pick}. 실제 도식화는 일러스트레이터에서 직접 작업 필요.`;
+}
+function saveAiNote(id){
+  const o = orders.find(x=>x.id===id);
+  o.aiNote = document.getElementById('ai_'+id).value;
+  if(o.stageIdx===STAGE_IDX.draft) advance(o, 'AI 보조 · 초안 메모 저장 후 관리자 검토 요청');
+  else { addLog(o, 'AI 보조 · 초안 메모 수정'); saveOrders(); render(); }
+}
+function approveDraft(id){
+  const o = orders.find(x=>x.id===id);
+  o.reviewApproved = true;
+  if(o.stageIdx===STAGE_IDX.review) advance(o, '관리자 확인 · 시안 승인 → 자동: 고객에게 시안 전송 알림 발송(시뮬레이션)');
+  else { saveOrders(); render(); }
+}
+function rejectDraft(id){
+  const o = orders.find(x=>x.id===id);
+  o.stageIdx = STAGE_IDX.draft;
+  o.reviewApproved = false;
+  delete viewStage[id];
+  addLog(o, '관리자 확인 · 시안 반려, 디자인 초안 단계로 되돌림');
+  saveOrders(); render();
+}
+function confirmCustomer(id, checked){
+  const o = orders.find(x=>x.id===id);
+  o.customerConfirmed = checked;
+  if(checked && o.stageIdx===STAGE_IDX.confirm) advance(o, '관리자 확인 · 고객 최종 컨펌 완료');
+  else { saveOrders(); render(); }
+}
+function saveWorkOrder(id){
+  captureWorkOrderInputs(id);
+  const o = orders.find(x=>x.id===id);
+  addLog(o, '관리자 확인 · 작업지시서 내용 저장');
+  saveOrders(); render();
+}
+function setWO(id, field, val){
+  captureWorkOrderInputs(id);
+  const o = orders.find(x=>x.id===id);
+  o.workOrder[field] = val;
+  if(o.workOrder.sentToCustomer && o.stageIdx===STAGE_IDX.workorder){
+    advance(o, '관리자 확인 · 작업지시서 전송함');
+  } else { saveOrders(); render(); }
+}
+function readFileAsDataURL(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+const MAX_WORKORDER_FILE_MB = 15;
+async function uploadWorkOrderFile(id, input){
+  captureWorkOrderInputs(id);
+  const o = orders.find(x=>x.id===id);
+  if(!o || !input.files.length) return;
+  ensureWorkOrderShape(o);
+  const files = Array.from(input.files);
+  let uploaded = 0, skipped = 0;
+  for(const f of files){
+    if(!f.type.startsWith('image/') && f.size > MAX_WORKORDER_FILE_MB*1024*1024){ skipped++; continue; }
+    try{
+      const dataUrl = f.type.startsWith('image/') ? await resizeImageFile(f) : await readFileAsDataURL(f);
+      o.workOrder.files.push({name:f.name, dataUrl});
+      uploaded++;
+    }catch(e){ console.error(e); }
+  }
+  addLog(o, `관리자 확인 · 작업지시서 파일 ${uploaded}개 업로드${skipped?` (${skipped}개는 ${MAX_WORKORDER_FILE_MB}MB 초과로 제외됨)`:''}`);
+  saveOrders(); render();
+  if(skipped) alert(`${skipped}개 파일이 ${MAX_WORKORDER_FILE_MB}MB를 초과하여 업로드되지 않았습니다. 용량을 줄이거나 압축 후 다시 시도해주세요.`);
+}
+function removeWorkOrderFile(id, idx){
+  const o = orders.find(x=>x.id===id);
+  if(!o || !o.workOrder.files) return;
+  o.workOrder.files.splice(idx, 1);
+  saveOrders(); render();
+}
+function setFactory(id, field, val){
+  const o = orders.find(x=>x.id===id);
+  o.factory[field] = val;
+  if(o.factory.designSent && o.factory.workOrderSent && o.stageIdx===STAGE_IDX.factory){
+    advance(o, '관리자 확인 · 공장(카카스포츠)에 디자인파일+작업지시서 전달 완료');
+  } else { saveOrders(); render(); }
+}
+function updateQuoteField(id, field, val){
+  const o = orders.find(x=>x.id===id);
+  if(field==='vat') o.vat = val;
+  else if(field==='qty' || field==='optionCost') o[field] = Number(val)||0;
+  else o[field] = val; // itemType, priceTier, fabric
+  saveOrders(); render();
+}
+function quoteText(r){
+  return `[견적서 NO.${r.quoteNo}]\n${r.dateLabel}\n공급자: ${SUPPLIER.name} (${SUPPLIER.ceo}) · ${SUPPLIER.bizNo}\n공급받는자: ${r.customer}\n품명: ${r.itemType} (${r.fabric} 원단) x ${r.qty}\n단가(VAT포함): ${fmt(r.unitPrice)}원\n옵션: ${fmt(r.optionCost)}원\n견적금액(부가세 포함): 일금 ${numberToKorean(r.total).replace('원','')}원정 (₩${fmt(r.total)})\n${SUPPLIER.account}`;
+}
+function copyQuote(id){
+  const o = orders.find(x=>x.id===id);
+  const {unitPrice, total} = computeQuoteAmounts(o);
+  if(!o.quoteNo) o.quoteNo = nextQuoteNo();
+  const text = quoteText({quoteNo:o.quoteNo, dateLabel:formatKoreanDate(), customer:o.customer, itemType:o.itemType, fabric:o.fabric, qty:o.qty, unitPrice, optionCost:o.optionCost, total});
+  navigator.clipboard.writeText(text).then(()=>alert('견적 내용이 복사되었습니다'));
+}
+async function downloadPDF(elementId, filename){
+  try{
+    const el = document.getElementById(elementId);
+    if(!el){ alert('내용을 찾을 수 없습니다'); return; }
+    if(!window.html2canvas || !window.jspdf){ alert('PDF 기능을 불러오는 중입니다. 잠시 후 다시 시도해주세요.'); return; }
+    const canvas = await window.html2canvas(el, {scale:2, backgroundColor:'#ffffff'});
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({unit:'pt', format:'a4'});
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    const imgW = pageW - margin*2;
+    const imgH = canvas.height * imgW / canvas.width;
+    let heightLeft = imgH;
+    let y = margin;
+    pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH);
+    heightLeft -= (pageH - margin*2);
+    while(heightLeft > 0){
+      y = -(imgH - heightLeft) + margin;
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH);
+      heightLeft -= (pageH - margin*2);
+    }
+    pdf.save(filename);
+  }catch(e){
+    console.error(e);
+    alert('PDF 생성에 실패했습니다. 다시 시도해주세요.');
+  }
+}
+function downloadQuotePDF(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o.quoteNo) o.quoteNo = nextQuoteNo();
+  downloadPDF('quoteBox_'+id, `견적서_${o.customer}_NO${o.quoteNo}.pdf`);
+}
+function downloadWorkOrderPDF(id){
+  const o = orders.find(x=>x.id===id);
+  downloadPDF('woBox_'+id, `작업지시서_${o.customer}.pdf`);
+}
+function sendQuote(id){
+  const o = orders.find(x=>x.id===id);
+  o.quoteGenerated = true; o.quoteSent = true;
+  if(!o.quoteNo) o.quoteNo = nextQuoteNo();
+  archiveQuote(o);
+  if(o.stageIdx===STAGE_IDX.quote) advance(o, '자동 생성 · 견적서 발송 완료 → 주문 완료');
+  else { addLog(o, '자동 · 견적서 재발송 표시'); saveOrders(); render(); }
+}
+
+function openQuoteArchive(){
+  document.getElementById('qa_search').value = '';
+  renderQuoteArchive();
+  document.getElementById('quoteArchiveModal').classList.add('show');
+}
+function closeQuoteArchive(){ document.getElementById('quoteArchiveModal').classList.remove('show'); }
+function renderQuoteArchive(){
+  const q = (document.getElementById('qa_search').value||'').trim().toLowerCase();
+  const list = quotesArchive.filter(r => !q || r.customer.toLowerCase().includes(q) || String(r.quoteNo).includes(q));
+  const el = document.getElementById('quoteArchiveList');
+  if(!list.length){ el.innerHTML = '<div class="empty">보관된 견적서가 없습니다.</div>'; return; }
+  el.innerHTML = list.map(r=>`
+    <div class="qarchive-item">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
+        <b style="font-size:13.5px;">${r.customer}</b>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--sub);flex-shrink:0;">NO.${r.quoteNo}</span>
+      </div>
+      <div class="note" style="margin:4px 0;">${r.itemType} · ${r.fabric} 원단 · ${r.qty}개 · ${fmt(r.total)}원 · ${r.dateLabel||''}</div>
+      <div class="actions" style="margin-top:6px;">
+        <button class="btn sm" onclick="copyArchivedQuote('${r.id}')">복사</button>
+        <button class="btn sm" onclick="downloadArchivedQuotePDF('${r.id}')">PDF</button>
+        <button class="btn sm ghost" style="color:var(--coral)" onclick="deleteArchivedQuote('${r.id}')">삭제</button>
+      </div>
+    </div>`).join('');
+}
+function copyArchivedQuote(id){
+  const r = quotesArchive.find(x=>x.id===id);
+  if(!r) return;
+  navigator.clipboard.writeText(quoteText(r)).then(()=>alert('견적 내용이 복사되었습니다'));
+}
+async function downloadArchivedQuotePDF(id){
+  const r = quotesArchive.find(x=>x.id===id);
+  if(!r) return;
+  const holder = document.getElementById('qaHiddenRender');
+  const boxId = 'qaBox_'+r.id;
+  holder.innerHTML = renderQuoteBoxHtml(r, boxId);
+  await downloadPDF(boxId, `견적서_${r.customer}_NO${r.quoteNo}.pdf`);
+  holder.innerHTML = '';
+}
+function deleteArchivedQuote(id){
+  if(!confirm('이 견적서 기록을 보관함에서 삭제할까요? 되돌릴 수 없습니다.')) return;
+  quotesArchive = quotesArchive.filter(x=>x.id!==id);
+  saveQuotesArchive();
+  renderQuoteArchive();
+}
+
+function renderLog(o){
+  if(!o.log || !o.log.length) return '';
+  return `<div class="log"><h4>진행 기록</h4><ul>${o.log.slice(0,8).map(l=>`<li><span class="t">${l.t}</span><span>${l.text}</span></li>`).join('')}</ul></div>`;
+}
+
+function setViewStage(id, idx){ viewStage[id] = idx; render(); }
+
+function stageNav(o){
+  const maxIdx = Math.min(o.stageIdx, STAGES.length-1);
+  const targetIdx = viewStage[o.id]!==undefined ? Math.min(viewStage[o.id], maxIdx) : maxIdx;
+  if(maxIdx<=0 && !isDone(o)) return {html:'', targetIdx};
+  const pills = STAGES.slice(0, maxIdx+1).map((st,idx)=>{
+    const active = idx===targetIdx;
+    return `<button class="btn ${active?'primary':'ghost'} sm" style="padding:4px 9px;font-size:11.5px;flex-shrink:0;" onclick="event.stopPropagation();setViewStage('${o.id}',${idx})">${st.label}</button>`;
+  }).join('');
+  return {html:`<div style="display:flex;gap:6px;overflow-x:auto;padding:0 16px 10px;">${pills}</div>`, targetIdx};
+}
+
+function orderCard(o){
+  const open = openId===o.id;
+  const s = isDone(o) ? {label:'완료', type:'done'} : currentStage(o);
+  const badge = isDone(o) ? '<span class="badge done">완료</span>' : badgeHtml(s.type);
+  const nav = stageNav(o);
+  return `<div class="card ${open?'open':''}" data-id="${o.id}">
+    <div class="card-head" onclick="toggleCard('${o.id}')">
+      <div class="card-title">
+        <div class="nm">${o.customer}</div>
+        <div class="sub">${o.contact||'연락처 미입력'} · ${s.label} ${badge}</div>
+      </div>
+      <button class="btn ghost sm" style="flex-shrink:0;" onclick="event.stopPropagation();openEditOrder('${o.id}')" aria-label="수정">수정</button>
+      <button class="btn ghost sm" style="flex-shrink:0;color:var(--coral)" onclick="event.stopPropagation();deleteOrder('${o.id}')" aria-label="삭제">삭제</button>
+      <span class="chev" style="flex-shrink:0;">▸</span>
+    </div>
+    ${renderProgress(o)}
+    <div class="card-body">
+      ${o.note?`<p class="note" style="margin-bottom:12px;">요청사항: ${o.note}</p>`:''}
+      ${nav.html}
+      ${stagePanel(o, nav.targetIdx)}
+      ${renderLog(o)}
+    </div>
+  </div>`;
+}
+
+async function updateStorageNote(){
+  const note = document.getElementById('storageNote');
+  if(!note) return;
+  const bytes = new Blob([JSON.stringify(orders)]).size + new Blob([JSON.stringify(quotesArchive)]).size;
+  const kb = bytes/1024;
+  const sizeTxt = kb<1024 ? `${kb.toFixed(0)}KB` : `${(kb/1024).toFixed(1)}MB`;
+  const base =
+    storageBackend==='cloud' ? '저장 위치: claude.ai 계정 저장소(클라우드)' :
+    storageBackend==='idb'   ? '저장 위치: 이 브라우저의 IndexedDB — 이미지·파일도 대용량으로 안전하게 저장됩니다 (같은 브라우저에서 열어야 보여요)' :
+    storageBackend==='local' ? '저장 위치: 이 브라우저의 로컬 저장소(localStorage, 용량이 적어 이미지가 많으면 저장이 실패할 수 있어요)' :
+    '⚠️ 이 브라우저에서는 데이터를 저장할 수 없습니다 — 새로고침하면 사라지니 자주 백업하세요.';
+
+  let usageTxt = `주문+견적 데이터 약 ${sizeTxt}`;
+  if(navigator.storage && navigator.storage.estimate){
+    try{
+      const est = await navigator.storage.estimate();
+      if(est && est.quota){
+        const usedMB = (est.usage/1024/1024).toFixed(1);
+        const quotaMB = (est.quota/1024/1024).toFixed(0);
+        const pct = Math.min(100, Math.round((est.usage/est.quota)*100));
+        usageTxt += ` · 브라우저 저장공간 ${usedMB}MB / 약 ${quotaMB}MB 사용 (${pct}%)`;
+        if(pct>=85) usageTxt += ` <b style="color:var(--coral)">(용량 부족 위험 — "완료 주문 정리"를 이용해보세요)</b>`;
+      }
+    }catch(e){}
+  }
+  const srv = getServerUrl() ? ' · <b style="color:var(--green)">서버(구글시트) 동기화 켜짐</b>' : ' · 서버 연결 안 됨(이 기기에만 저장됨)';
+  note.innerHTML = `${base} · ${usageTxt}${srv}`;
+}
+function render(){
+  const active = orders.filter(o=>!isDone(o));
+  const done = orders.filter(isDone);
+  document.getElementById('statActive').textContent = active.length;
+  document.getElementById('statNeeds').textContent = active.filter(o=>currentStage(o).type!=='auto').length;
+  document.getElementById('statDone').textContent = done.length;
+  document.getElementById('activeList').innerHTML = active.length ? active.map(orderCard).join('') : '<div class="empty">진행중인 주문이 없습니다. "새 문의 접수"로 시작해보세요.</div>';
+  document.getElementById('doneList').innerHTML = done.length ? done.map(orderCard).join('') : '<div class="empty">완료된 주문이 아직 없습니다.</div>';
+  updateStorageNote();
+}
+
+loadOrders();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</body>
+</html>
