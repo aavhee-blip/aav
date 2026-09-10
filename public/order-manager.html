@@ -230,7 +230,6 @@
 const STAGES = [
   {key:'inquiry',  label:'문의 접수',   type:'auto'},
   {key:'draft',    label:'디자인 초안', type:'ai'},
-  {key:'review',   label:'관리자 검토', type:'manual'},
   {key:'confirm',  label:'고객 확정',   type:'manual'},
   {key:'workorder',label:'작업지시서',  type:'manual'},
   {key:'factory',  label:'공장 전달',   type:'manual'},
@@ -422,7 +421,23 @@ async function loadOrders(){
     catch(e2){ orders = []; storageBackend = 'memory'; }
   }
   if(getServerUrl()) await loadFromServerIfConfigured();
+  if(migrateRemovedReviewStage()) saveOrders();
   render();
+}
+// The '관리자 검토' stage was removed from STAGES (admin already reviews the
+// draft in place, so a separate approval gate was redundant). Since stageIdx
+// is a plain array position, every order saved under the old 7-stage array
+// needs its stored index shifted down to line up with the new 6-stage one —
+// otherwise old "고객 확정" orders would render as "작업지시서", etc.
+function migrateRemovedReviewStage(){
+  let changed = false;
+  orders.forEach(o=>{
+    if(o._reviewStageMigrated || typeof o.stageIdx !== 'number') return;
+    o.stageIdx = o.stageIdx <= 1 ? o.stageIdx : Math.max(2, o.stageIdx - 1);
+    o._reviewStageMigrated = true;
+    changed = true;
+  });
+  return changed;
 }
 async function saveOrders(){
   try{
@@ -541,10 +556,10 @@ function createOrder(){
     optionCost: 0,
     vat: false,
     stageIdx: 1, // 0=inquiry already done automatically on submit
+    _reviewStageMigrated: true,
     aiNote: note ? `[고객 요청사항] ${note}` : '',
     draftImages: [],
     referenceLinks: [],
-    reviewApproved:false,
     customerConfirmed:false,
     workOrder:{colorCode:'', font:'', sentToCustomer:false, confirmedByCustomer:false},
     factory:{designSent:false, workOrderSent:false},
@@ -565,14 +580,14 @@ function seedOrder(customer, contact, note, itemType, fabric, stageIdx){
     customer, contact, note,
     qty: 1, itemType, priceTier:'discount', fabric, optionCost:0, vat:false,
     stageIdx,
+    _reviewStageMigrated: true,
     aiNote: note ? `[고객 요청사항] ${note}` : '',
     draftImages: [],
     referenceLinks: [],
-    reviewApproved: stageIdx>2,
-    customerConfirmed: stageIdx>3,
-    workOrder:{colorCode:'', font:'', sentToCustomer: stageIdx>4, confirmedByCustomer: stageIdx>4},
-    factory:{designSent: stageIdx>5, workOrderSent: stageIdx>5},
-    quoteGenerated: stageIdx>=7, quoteSent: stageIdx>=7,
+    customerConfirmed: stageIdx>STAGE_IDX.confirm,
+    workOrder:{colorCode:'', font:'', sentToCustomer: stageIdx>STAGE_IDX.workorder, confirmedByCustomer: stageIdx>STAGE_IDX.workorder},
+    factory:{designSent: stageIdx>STAGE_IDX.factory, workOrderSent: stageIdx>STAGE_IDX.factory},
+    quoteGenerated: stageIdx>=STAGE_IDX.quote, quoteSent: stageIdx>=STAGE_IDX.quote,
     log:[]
   };
   addLog(o, '자동 · 구글시트 "유니폼 제작 현황"에서 가져옴');
@@ -581,9 +596,9 @@ function seedOrder(customer, contact, note, itemType, fabric, stageIdx){
 
 function importFromSheet(){
   const seeds = [
-    seedOrder('VERA', '010-7565-3035', '넥: 변형브이넥 · 원단: 쿨에버 · 디자인 진행중, 계약금 완료 (수량 확인 필요)', '상하의 세트', '쿨에버', 1),
-    seedOrder('OneShot', '0107827970', '넥: 라운드넥 · 원단: 싱글스판 · 제작 진행중, 입금 완료 (수량 확인 필요)', '상하의 세트', '싱글스판', 5),
-    seedOrder('APSIV (취소)', '010-5171-3633', '넥: 변형브이넥 · 원단: 싱글스판 · 시트상 디자인/제작/입금 전체 취소', '상하의 세트', '싱글스판', 7),
+    seedOrder('VERA', '010-7565-3035', '넥: 변형브이넥 · 원단: 쿨에버 · 디자인 진행중, 계약금 완료 (수량 확인 필요)', '상하의 세트', '쿨에버', STAGE_IDX.draft),
+    seedOrder('OneShot', '0107827970', '넥: 라운드넥 · 원단: 싱글스판 · 제작 진행중, 입금 완료 (수량 확인 필요)', '상하의 세트', '싱글스판', STAGE_IDX.factory),
+    seedOrder('APSIV (취소)', '010-5171-3633', '넥: 변형브이넥 · 원단: 싱글스판 · 시트상 디자인/제작/입금 전체 취소', '상하의 세트', '싱글스판', STAGES.length),
   ];
   let added = 0;
   seeds.forEach(s=>{
@@ -902,21 +917,9 @@ function stagePanel(o, targetIdx){
       <div class="actions">
         <button class="btn sm" onclick="suggestAi('${o.id}')">AI 제안 받기</button>
         ${isCurrent
-          ? `<button class="btn sm primary" onclick="saveAiNote('${o.id}')">메모 저장하고 검토 요청</button>`
+          ? `<button class="btn sm primary" onclick="saveAiNote('${o.id}')">메모 저장하고 고객 확정 단계로</button>`
           : `<button class="btn sm primary" onclick="saveAiNote('${o.id}')">메모 저장</button>`}
       </div>
-    </div>`;
-  }
-
-  if(s.key==='review'){
-    return `<div class="stage-panel">
-      <div class="sp-head"><h3>관리자 검토·승인</h3>${badgeHtml('manual')}</div>
-      ${pastNote}
-      <p class="note">시안을 확인하고 승인하면 고객에게 자동으로 전송 알림이 기록됩니다.</p>
-      ${isCurrent ? `<div class="actions">
-        <button class="btn sm coral" onclick="rejectDraft('${o.id}')">반려 (초안으로 되돌리기)</button>
-        <button class="btn sm primary" onclick="approveDraft('${o.id}')">승인 · 고객에 전송</button>
-      </div>` : `<p class="note">승인 상태: ${o.reviewApproved ? '승인됨' : '대기중'}. 되돌리려면 <button class="btn ghost sm" onclick="rejectDraft('${o.id}')">초안으로 되돌리기</button></p>`}
     </div>`;
   }
 
@@ -1068,22 +1071,8 @@ function suggestAi(id){
 function saveAiNote(id){
   const o = orders.find(x=>x.id===id);
   o.aiNote = document.getElementById('ai_'+id).value;
-  if(o.stageIdx===STAGE_IDX.draft) advance(o, 'AI 보조 · 초안 메모 저장 후 관리자 검토 요청');
+  if(o.stageIdx===STAGE_IDX.draft) advance(o, 'AI 보조 · 초안 메모 저장 후 고객 확정 단계로 진행');
   else { addLog(o, 'AI 보조 · 초안 메모 수정'); saveOrders(); render(); }
-}
-function approveDraft(id){
-  const o = orders.find(x=>x.id===id);
-  o.reviewApproved = true;
-  if(o.stageIdx===STAGE_IDX.review) advance(o, '관리자 확인 · 시안 승인 → 자동: 고객에게 시안 전송 알림 발송(시뮬레이션)');
-  else { saveOrders(); render(); }
-}
-function rejectDraft(id){
-  const o = orders.find(x=>x.id===id);
-  o.stageIdx = STAGE_IDX.draft;
-  o.reviewApproved = false;
-  delete viewStage[id];
-  addLog(o, '관리자 확인 · 시안 반려, 디자인 초안 단계로 되돌림');
-  saveOrders(); render();
 }
 function confirmCustomer(id, checked){
   const o = orders.find(x=>x.id===id);
