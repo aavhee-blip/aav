@@ -11,7 +11,6 @@
     --navy:#16324F; --navy-deep:#0E2339; --navy-soft:#E9EFF4;
     --court:#F4F7FA; --line:#D8E1E8; --ink:#22262B; --sub:#5B6672;
     --coral:#E8542F; --coral-soft:#FCE6DE; --coral-line:#F3C4AD;
-    --amber:#946200; --amber-soft:#FFF3D6; --amber-line:#F0DBA0;
     --green:#1D7A4C; --green-soft:#E1F3E9;
     --card:#FFFFFF;
   }
@@ -43,7 +42,6 @@
 
   .badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;border-radius:100px;padding:3px 10px;white-space:nowrap;}
   .badge.auto{background:var(--navy-soft);color:var(--navy);border:1px solid var(--line);}
-  .badge.ai{background:var(--amber-soft);color:var(--amber);border:1px solid var(--amber-line);}
   .badge.manual{background:var(--coral-soft);color:var(--coral);border:1px solid var(--coral-line);}
   .badge.done{background:var(--green-soft);color:var(--green);border:1px solid #B9E2C9;}
 
@@ -229,7 +227,7 @@
 <script>
 const STAGES = [
   {key:'inquiry',  label:'문의 접수',   type:'auto'},
-  {key:'draft',    label:'디자인 초안', type:'ai'},
+  {key:'draft',    label:'디자인 초안', type:'manual'},
   {key:'confirm',  label:'고객 확정',   type:'manual'},
   {key:'workorder',label:'작업지시서',  type:'manual'},
   {key:'factory',  label:'공장 전달',   type:'manual'},
@@ -238,7 +236,7 @@ const STAGES = [
 const STAGE_IDX = {};
 STAGES.forEach((s,i)=>{ STAGE_IDX[s.key]=i; });
 let viewStage = {}; // orderId -> stage index the admin is currently viewing/editing (defaults to live stage)
-const badgeHtml = t => t==='auto' ? '<span class="badge auto">자동</span>' : t==='ai' ? '<span class="badge ai">AI 보조</span>' : '<span class="badge manual">관리자 확인</span>';
+const badgeHtml = t => t==='auto' ? '<span class="badge auto">자동</span>' : '<span class="badge manual">관리자 확인</span>';
 
 const PRICE_TABLE = {
   '상의':       {base:40000, discount:35000, fabric:{'인타록':0,'싱글스판':0,'쿨에버':5000}},
@@ -557,7 +555,6 @@ function createOrder(){
     vat: false,
     stageIdx: 1, // 0=inquiry already done automatically on submit
     _reviewStageMigrated: true,
-    aiNote: note ? `[고객 요청사항] ${note}` : '',
     draftImages: [],
     referenceLinks: [],
     customerConfirmed:false,
@@ -581,7 +578,6 @@ function seedOrder(customer, contact, note, itemType, fabric, stageIdx){
     qty: 1, itemType, priceTier:'discount', fabric, optionCost:0, vat:false,
     stageIdx,
     _reviewStageMigrated: true,
-    aiNote: note ? `[고객 요청사항] ${note}` : '',
     draftImages: [],
     referenceLinks: [],
     customerConfirmed: stageIdx>STAGE_IDX.confirm,
@@ -628,7 +624,6 @@ function importDesignRequestsFromForm(){
     if(!o) return;
     ensureWorkOrderShape(o);
     o.note = m.design;
-    o.aiNote = `[고객 요청사항] ${m.design}`;
     o.referenceLinks = (m.links||[]).slice();
     o.workOrder.dueDate = m.deadline;
     o.workOrder.details.neckType = m.neckType;
@@ -893,17 +888,14 @@ function stagePanel(o, targetIdx){
     const images = o.draftImages || [];
     const links = o.referenceLinks || [];
     return `<div class="stage-panel">
-      <div class="sp-head"><h3>디자인 초안</h3>${badgeHtml('ai')}</div>
+      <div class="sp-head"><h3>디자인 초안</h3>${badgeHtml('manual')}</div>
       ${pastNote}
-      <p class="note">AI는 참고용 컨셉 메모까지만 제안합니다. 실제 도식화·컬러코드는 일러스트레이터에서 직접 작업해주세요.</p>
+      <p class="note">일러스트레이터에서 작업한 디자인 초안 이미지를 업로드해주세요.</p>
       ${links.length ? `<div class="field"><label>고객 참고자료 (구글폼에서 자동 연결)</label>
         <div style="display:flex;flex-direction:column;gap:4px;">
           ${links.map((l,i)=>`<a href="${l}" target="_blank" rel="noopener" style="font-size:12.5px;color:var(--coral);">참고자료 ${i+1} 열기 ↗</a>`).join('')}
         </div>
       </div>` : ''}
-      <div class="field"><label>AI 제안 메모</label>
-        <textarea id="ai_${o.id}" placeholder="예: 팀 컬러 기반 그라디언트, 넘버 폰트 볼드체 추천">${o.aiNote||''}</textarea>
-      </div>
       <div class="field">
         <label>디자인 초안 이미지 업로드</label>
         <input type="file" accept="image/*" multiple onchange="uploadDraftImage('${o.id}', this)">
@@ -914,12 +906,9 @@ function stagePanel(o, targetIdx){
           </div>`).join('')}
         </div>` : `<p class="note">업로드된 이미지가 없습니다.</p>`}
       </div>
-      <div class="actions">
-        <button class="btn sm" onclick="suggestAi('${o.id}')">AI 제안 받기</button>
-        ${isCurrent
-          ? `<button class="btn sm primary" onclick="saveAiNote('${o.id}')">메모 저장하고 고객 확정 단계로</button>`
-          : `<button class="btn sm primary" onclick="saveAiNote('${o.id}')">메모 저장</button>`}
-      </div>
+      ${isCurrent ? `<div class="actions">
+        <button class="btn sm primary" onclick="advanceFromDraft('${o.id}')">고객 확정 단계로 진행</button>
+      </div>` : ''}
     </div>`;
   }
 
@@ -1053,7 +1042,7 @@ async function uploadDraftImage(id, input){
       o.draftImages.push({name:f.name, dataUrl});
     }catch(e){ console.error(e); }
   }
-  addLog(o, `AI 보조 · 디자인 초안 이미지 ${files.length}개 업로드`);
+  addLog(o, `관리자 확인 · 디자인 초안 이미지 ${files.length}개 업로드`);
   saveOrders(); render();
 }
 function removeDraftImage(id, idx){
@@ -1062,17 +1051,9 @@ function removeDraftImage(id, idx){
   o.draftImages.splice(idx, 1);
   saveOrders(); render();
 }
-function suggestAi(id){
+function advanceFromDraft(id){
   const o = orders.find(x=>x.id===id);
-  const palettes = ['팀 메인 컬러를 넘버·목 라인에 포인트로 사용', '그라디언트 배색 + 사이드 라인 대비', '클래식 투톤 배색 + 볼드 넘버 폰트'];
-  const pick = palettes[Math.floor(Math.random()*palettes.length)];
-  document.getElementById('ai_'+id).value = `[AI 참고 제안] ${pick}. 실제 도식화는 일러스트레이터에서 직접 작업 필요.`;
-}
-function saveAiNote(id){
-  const o = orders.find(x=>x.id===id);
-  o.aiNote = document.getElementById('ai_'+id).value;
-  if(o.stageIdx===STAGE_IDX.draft) advance(o, 'AI 보조 · 초안 메모 저장 후 고객 확정 단계로 진행');
-  else { addLog(o, 'AI 보조 · 초안 메모 수정'); saveOrders(); render(); }
+  if(o.stageIdx===STAGE_IDX.draft) advance(o, '관리자 확인 · 디자인 초안 완료, 고객 확정 단계로 진행');
 }
 function confirmCustomer(id, checked){
   const o = orders.find(x=>x.id===id);
