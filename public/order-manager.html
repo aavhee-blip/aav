@@ -167,11 +167,26 @@
   <div class="modal">
     <h2>새 문의 접수</h2>
     <p class="sub"><span class="badge auto">자동</span> 챗봇/폼으로 접수된 문의를 대신 기록합니다.</p>
-    <div class="field"><label>고객/학교(팀)명</label><input id="f_customer" placeholder="예: 동아고등학교 배구부"></div>
-    <div class="field"><label>담당자 연락처</label><input id="f_contact" placeholder="010-0000-0000"></div>
-    <div class="field"><label>예상 수량</label><input id="f_qty" type="number" min="1" value="10"></div>
+    <div class="row2">
+      <div class="field"><label>대표자 이름 (Name)</label><input id="f_repName" placeholder="예: 김철수"></div>
+      <div class="field"><label>팀 이름 (Team Name)</label><input id="f_customer" placeholder="예: 동아고등학교 배구부"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>대표자 연락처 (Mobile Number)</label><input id="f_contact" placeholder="010-0000-0000"></div>
+      <div class="field"><label>마감 기한 (Deadline)</label><input id="f_deadline" type="date"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>넥 타입 (Neck Type)</label><input id="f_neckType" placeholder="예: 라운드넥, 브이넥"></div>
+      <div class="field"><label>소매 타입 (Sleeves)</label><input id="f_sleeveType" placeholder="예: 민소매, 반팔"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>원단 (Fabric)</label>
+        <select id="f_fabric"></select>
+      </div>
+      <div class="field"><label>예상 수량</label><input id="f_qty" type="number" min="1" value="10"></div>
+    </div>
     <p class="note" style="margin:-4px 0 10px;">정확한 가격은 견적서 단계에서 종류·원단 선택으로 자동 계산됩니다.</p>
-    <div class="field"><label>디자인 요청사항 (고객이 원하는 컬러/로고/느낌 등)</label><textarea id="f_note" placeholder="팀 컬러, 로고, 느낌, 참고 이미지 설명 등"></textarea></div>
+    <div class="field"><label>디자인 (Design) — 고객이 원하는 컬러/로고/느낌 등</label><textarea id="f_note" placeholder="팀 컬러, 로고, 느낌, 참고 이미지 설명 등"></textarea></div>
     <div class="actions">
       <button class="btn ghost" onclick="closeNewOrder()">취소</button>
       <button class="btn primary" onclick="createOrder()">접수 완료</button>
@@ -183,15 +198,28 @@
   <div class="modal">
     <h2>주문 정보 수정</h2>
     <input type="hidden" id="e_id">
-    <div class="field"><label>고객/학교(팀)명</label><input id="e_customer"></div>
-    <div class="field"><label>담당자 연락처</label><input id="e_contact"></div>
     <div class="row2">
-      <div class="field"><label>수량</label><input id="e_qty" type="number" min="1"></div>
-      <div class="field"><label>종류</label>
-        <select id="e_itemType"><option value="상의">상의</option><option value="하의">하의</option><option value="상하의 세트">상하의 세트</option></select>
-      </div>
+      <div class="field"><label>대표자 이름 (Name)</label><input id="e_repName"></div>
+      <div class="field"><label>팀 이름 (Team Name)</label><input id="e_customer"></div>
     </div>
-    <div class="field"><label>디자인 요청사항 / 메모</label><textarea id="e_note"></textarea></div>
+    <div class="row2">
+      <div class="field"><label>대표자 연락처 (Mobile Number)</label><input id="e_contact"></div>
+      <div class="field"><label>마감 기한 (Deadline)</label><input id="e_deadline" type="date"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>넥 타입 (Neck Type)</label><input id="e_neckType"></div>
+      <div class="field"><label>소매 타입 (Sleeves)</label><input id="e_sleeveType"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>원단 (Fabric)</label>
+        <select id="e_fabric"></select>
+      </div>
+      <div class="field"><label>수량</label><input id="e_qty" type="number" min="1"></div>
+    </div>
+    <div class="field"><label>종류</label>
+      <select id="e_itemType"><option value="상의">상의</option><option value="하의">하의</option><option value="상하의 세트">상하의 세트</option></select>
+    </div>
+    <div class="field"><label>디자인 (Design) / 메모</label><textarea id="e_note"></textarea></div>
     <div class="actions">
       <button class="btn ghost" onclick="closeEditOrder()">취소</button>
       <button class="btn primary" onclick="saveEditOrder()">저장</button>
@@ -248,6 +276,10 @@ function getUnitPrice(o){
   const base = o.priceTier==='base' ? t.base : t.discount;
   const surcharge = (t.fabric && t.fabric[o.fabric]) || 0;
   return base + surcharge;
+}
+const FABRIC_OPTIONS = Object.keys(PRICE_TABLE['상하의 세트'].fabric);
+function fabricOptionsHtml(selected){
+  return FABRIC_OPTIONS.map(f=>`<option value="${f}" ${f===selected?'selected':''}>${f}</option>`).join('');
 }
 
 let orders = [];
@@ -535,22 +567,30 @@ function addLog(o, text){
   o.log.unshift({t: new Date().toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}), text});
 }
 
-function openNewOrder(){ document.getElementById('newOrderModal').classList.add('show'); }
+function openNewOrder(){
+  document.getElementById('f_fabric').innerHTML = fabricOptionsHtml('인타록');
+  document.getElementById('newOrderModal').classList.add('show');
+}
 function closeNewOrder(){ document.getElementById('newOrderModal').classList.remove('show'); }
 
 function createOrder(){
   const customer = document.getElementById('f_customer').value.trim();
-  if(!customer){ alert('고객/팀명을 입력해주세요'); return; }
+  if(!customer){ alert('팀 이름을 입력해주세요'); return; }
   const note = document.getElementById('f_note').value.trim();
   const o = {
     id: 'o'+Date.now(),
+    receivedAt: new Date().toISOString().slice(0,10),
+    repName: document.getElementById('f_repName').value.trim(),
     customer,
     contact: document.getElementById('f_contact').value.trim(),
+    deadline: document.getElementById('f_deadline').value,
+    neckType: document.getElementById('f_neckType').value.trim(),
+    sleeveType: document.getElementById('f_sleeveType').value.trim(),
     note,
     qty: Number(document.getElementById('f_qty').value)||1,
     itemType: '상하의 세트',
     priceTier: 'discount',
-    fabric: '인타록',
+    fabric: document.getElementById('f_fabric').value || '인타록',
     optionCost: 0,
     vat: false,
     stageIdx: 1, // 0=inquiry already done automatically on submit
@@ -567,14 +607,15 @@ function createOrder(){
   orders.unshift(o);
   saveOrders();
   closeNewOrder();
-  ['f_customer','f_contact','f_note'].forEach(id=>document.getElementById(id).value='');
+  ['f_repName','f_customer','f_contact','f_deadline','f_neckType','f_sleeveType','f_note'].forEach(id=>document.getElementById(id).value='');
   render();
 }
 
 function seedOrder(customer, contact, note, itemType, fabric, stageIdx){
   const o = {
     id: 'o'+Date.now()+Math.random().toString(36).slice(2,7),
-    customer, contact, note,
+    receivedAt: new Date().toISOString().slice(0,10),
+    repName: '', customer, contact, deadline:'', neckType:'', sleeveType:'', note,
     qty: 1, itemType, priceTier:'discount', fabric, optionCost:0, vat:false,
     stageIdx,
     _reviewStageMigrated: true,
@@ -622,11 +663,10 @@ function importDesignRequestsFromForm(){
   FORM_MATCHES.forEach(m=>{
     const o = orders.find(x=>x.customer.includes(m.key));
     if(!o) return;
-    ensureWorkOrderShape(o);
     o.note = m.design;
     o.referenceLinks = (m.links||[]).slice();
-    o.workOrder.dueDate = m.deadline;
-    o.workOrder.details.neckType = m.neckType;
+    o.deadline = m.deadline;
+    o.neckType = m.neckType;
     addLog(o, '자동 · 구글폼 "유니폼 제작(응답)" 시트에서 디자인 요청사항·참고자료 매치하여 불러옴');
     matched++;
   });
@@ -650,8 +690,13 @@ function openEditOrder(id){
   const o = orders.find(x=>x.id===id);
   if(!o) return;
   document.getElementById('e_id').value = o.id;
+  document.getElementById('e_repName').value = o.repName||'';
   document.getElementById('e_customer').value = o.customer;
   document.getElementById('e_contact').value = o.contact||'';
+  document.getElementById('e_deadline').value = o.deadline||'';
+  document.getElementById('e_neckType').value = o.neckType||'';
+  document.getElementById('e_sleeveType').value = o.sleeveType||'';
+  document.getElementById('e_fabric').innerHTML = fabricOptionsHtml(o.fabric);
   document.getElementById('e_qty').value = o.qty;
   document.getElementById('e_itemType').value = o.itemType;
   document.getElementById('e_note').value = o.note||'';
@@ -663,9 +708,14 @@ function saveEditOrder(){
   const o = orders.find(x=>x.id===id);
   if(!o) return;
   const newCustomer = document.getElementById('e_customer').value.trim();
-  if(!newCustomer){ alert('고객/팀명을 입력해주세요'); return; }
+  if(!newCustomer){ alert('팀 이름을 입력해주세요'); return; }
   o.customer = newCustomer;
+  o.repName = document.getElementById('e_repName').value.trim();
   o.contact = document.getElementById('e_contact').value.trim();
+  o.deadline = document.getElementById('e_deadline').value;
+  o.neckType = document.getElementById('e_neckType').value.trim();
+  o.sleeveType = document.getElementById('e_sleeveType').value.trim();
+  o.fabric = document.getElementById('e_fabric').value;
   o.qty = Number(document.getElementById('e_qty').value)||1;
   o.itemType = document.getElementById('e_itemType').value;
   o.note = document.getElementById('e_note').value.trim();
@@ -770,12 +820,12 @@ function numberToKorean(n){
 function ensureWorkOrderShape(o){
   o.workOrder = o.workOrder || {};
   const wo = o.workOrder;
-  wo.dueDate = wo.dueDate || '';
+  wo.dueDate = wo.dueDate || o.deadline || '';
   wo.sizeQty = wo.sizeQty || {top:{}, bottom:{}};
   wo.sizeQty.top = wo.sizeQty.top || {}; wo.sizeQty.bottom = wo.sizeQty.bottom || {};
   SIZES.forEach(s=>{ if(wo.sizeQty.top[s]===undefined) wo.sizeQty.top[s]=0; if(wo.sizeQty.bottom[s]===undefined) wo.sizeQty.bottom[s]=0; });
   wo.details = wo.details || {};
-  ['sizeTag','heriTape','innerShorts','topFabric','bottomFabric','bottomPattern','neckType'].forEach(f=>{ if(wo.details[f]===undefined) wo.details[f]=''; });
+  ['sizeTag','heriTape','innerShorts','topFabric','bottomFabric','bottomPattern'].forEach(f=>{ if(wo.details[f]===undefined) wo.details[f]=''; });
   wo.heatPrint = wo.heatPrint!==undefined ? wo.heatPrint : 'AAV';
   wo.players = wo.players || [];
   wo.shipping = wo.shipping || {address:'', name:'', phone:''};
@@ -794,7 +844,7 @@ function captureWorkOrderInputs(id){
     if(g('wsz_top_'+s)) wo.sizeQty.top[s] = Number(g('wsz_top_'+s).value)||0;
     if(g('wsz_bot_'+s)) wo.sizeQty.bottom[s] = Number(g('wsz_bot_'+s).value)||0;
   });
-  ['sizeTag','heriTape','innerShorts','topFabric','bottomFabric','bottomPattern','neckType'].forEach(f=>{
+  ['sizeTag','heriTape','innerShorts','topFabric','bottomFabric','bottomPattern'].forEach(f=>{
     if(g('wo_'+f)) wo.details[f] = g('wo_'+f).value;
   });
   if(g('wo_heat')) wo.heatPrint = g('wo_heat').value;
@@ -828,7 +878,7 @@ function copyWorkOrder(id){
   const wo = o.workOrder;
   const sizeLine = t => SIZES.map(s=>`${s}:${wo.sizeQty[t][s]||0}`).join(' ');
   const players = wo.players.map((p,i)=>`${i+1}. ${p.name||''} #${p.number||''} (상${p.sizeTop||'-'}/하${p.sizeBottom||'-'}) ${p.note||''}`).join('\n');
-  const text = `[작업 지시서]\n팀명: ${o.customer}\n유니폼 종류: 배구 유니폼\n납기일: ${wo.dueDate||'미정'}\n상의 사이즈별 수량: ${sizeLine('top')}\n하의 사이즈별 수량: ${sizeLine('bottom')}\n사이즈텍: ${wo.details.sizeTag} / 헤리테이프: ${wo.details.heriTape} / 속바지: ${wo.details.innerShorts}\n상의원단: ${wo.details.topFabric} / 하의원단: ${wo.details.bottomFabric} / 하의패턴: ${wo.details.bottomPattern} / 넥타입: ${wo.details.neckType}\n열부착: ${wo.heatPrint}\n선수명단:\n${players}\n배송지: ${wo.shipping.address} (${wo.shipping.name}, ${wo.shipping.phone})\n특이사항: ${wo.specialNote}`;
+  const text = `[작업 지시서]\n팀명: ${o.customer}\n유니폼 종류: 배구 유니폼\n납기일: ${wo.dueDate||'미정'}\n상의 사이즈별 수량: ${sizeLine('top')}\n하의 사이즈별 수량: ${sizeLine('bottom')}\n사이즈텍: ${wo.details.sizeTag} / 헤리테이프: ${wo.details.heriTape} / 속바지: ${wo.details.innerShorts}\n상의원단: ${wo.details.topFabric} / 하의원단: ${wo.details.bottomFabric} / 하의패턴: ${wo.details.bottomPattern} / 넥타입: ${o.neckType||'미입력'} / 소매타입: ${o.sleeveType||'미입력'}\n열부착: ${wo.heatPrint}\n선수명단:\n${players}\n배송지: ${wo.shipping.address} (${wo.shipping.name}, ${wo.shipping.phone})\n특이사항: ${wo.specialNote}`;
   navigator.clipboard.writeText(text).then(()=>alert('작업지시서 내용이 복사되었습니다'));
 }
 
@@ -871,11 +921,23 @@ function stagePanel(o, targetIdx){
       <div class="sp-head"><h3>문의 접수 내용</h3>${badgeHtml('auto')}</div>
       ${pastNote}
       <div class="row2">
-        <div class="field"><label>고객/학교(팀)명</label><input value="${o.customer}" disabled></div>
-        <div class="field"><label>담당자 연락처</label><input value="${o.contact||'미입력'}" disabled></div>
+        <div class="field"><label>접수일</label><input value="${o.receivedAt||'미입력'}" disabled></div>
+        <div class="field"><label>대표자 이름 (Name)</label><input value="${o.repName||'미입력'}" disabled></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>팀 이름 (Team Name)</label><input value="${o.customer}" disabled></div>
+        <div class="field"><label>대표자 연락처 (Mobile Number)</label><input value="${o.contact||'미입력'}" disabled></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>마감 기한 (Deadline)</label><input value="${o.deadline||'미입력'}" disabled></div>
+        <div class="field"><label>넥 타입 (Neck Type)</label><input value="${o.neckType||'미입력'}" disabled></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>소매 타입 (Sleeves)</label><input value="${o.sleeveType||'미입력'}" disabled></div>
+        <div class="field"><label>원단 (Fabric)</label><input value="${o.fabric||'미입력'}" disabled></div>
       </div>
       <div class="field"><label>예상 수량</label><input value="${o.qty}" disabled></div>
-      <div class="field"><label>디자인 요청사항</label><textarea disabled>${o.note||'입력된 요청사항이 없습니다.'}</textarea></div>
+      <div class="field"><label>디자인 (Design)</label><textarea disabled>${o.note||'입력된 요청사항이 없습니다.'}</textarea></div>
       <div class="field"><label>고객이 첨부한 레퍼런스 이미지 (구글 드라이브)</label>
         ${links.length ? `<div style="display:flex;flex-direction:column;gap:4px;">
           ${links.map((l,i)=>`<a href="${l}" target="_blank" rel="noopener" style="font-size:12.5px;color:var(--coral);">레퍼런스 이미지 ${i+1} 열기 ↗</a>`).join('')}
