@@ -58,10 +58,15 @@
   .chev{color:var(--sub);font-size:13px;transition:transform .15s;flex-shrink:0;}
   .card.open .chev{transform:rotate(90deg);}
 
-  .progress{display:flex;gap:3px;padding:0 16px 14px;}
-  .progress i{flex:1;height:5px;border-radius:3px;background:var(--line);}
-  .progress i.past{background:var(--navy);}
-  .progress i.now{background:var(--coral);}
+  .stepper{display:flex;gap:4px;padding:10px 16px 14px;overflow-x:auto;}
+  .step{flex:1 1 0;min-width:46px;display:flex;flex-direction:column;align-items:center;gap:5px;background:none;border:none;padding:0;font-family:inherit;cursor:pointer;}
+  .step:disabled{cursor:default;}
+  .step .bar{width:100%;height:5px;border-radius:3px;background:var(--line);}
+  .step.past .bar{background:var(--navy);}
+  .step.now .bar{background:var(--coral);}
+  .step .lbl{font-size:10px;line-height:1.25;color:var(--sub);text-align:center;}
+  .step.active .lbl{color:var(--navy-deep);font-weight:700;}
+  .step:disabled .lbl{color:#B7C0C9;}
 
   .card-body{display:none;border-top:1px solid var(--line);padding:16px;}
   .card.open .card-body{display:block;}
@@ -72,6 +77,7 @@
   .field{margin-bottom:10px;}
   .field label{display:block;font-size:12.5px;font-weight:600;color:var(--sub);margin-bottom:5px;}
   .field input,.field textarea,.field select{width:100%;border:1px solid var(--line);border-radius:7px;padding:8px 10px;font-size:13.5px;font-family:inherit;background:#fff;color:var(--ink);}
+  .field input:disabled,.field textarea:disabled,.field select:disabled{background:var(--court);color:var(--sub);}
   .field textarea{resize:vertical;min-height:56px;}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .check{display:flex;align-items:center;gap:8px;font-size:13.5px;padding:8px 0;cursor:pointer;}
@@ -816,11 +822,28 @@ function copyWorkOrder(id){
   navigator.clipboard.writeText(text).then(()=>alert('작업지시서 내용이 복사되었습니다'));
 }
 
-function renderProgress(o){
-  const idx = Math.min(o.stageIdx, STAGES.length-1);
-  return '<div class="progress">' + STAGES.map((s,i)=>{
-    let cls = i < idx ? 'past' : (i===idx && !isDone(o) ? 'now' : '');
-    return `<i class="${cls}"></i>`;
+function getTargetIdx(o){
+  const maxIdx = Math.min(o.stageIdx, STAGES.length-1);
+  return viewStage[o.id]!==undefined ? Math.min(viewStage[o.id], maxIdx) : maxIdx;
+}
+
+// Single stepper bar: the colored progress segment and the stage's label
+// are one clickable unit, so clicking either produces the same navigation —
+// there's no separate "bar" vs "title" control anymore.
+function renderStepper(o){
+  const maxIdx = Math.min(o.stageIdx, STAGES.length-1);
+  const targetIdx = getTargetIdx(o);
+  return '<div class="stepper">' + STAGES.map((s,i)=>{
+    const reached = i <= maxIdx;
+    const cls = [
+      isDone(o) || i < maxIdx ? 'past' : (i===maxIdx ? 'now' : ''),
+      i===targetIdx ? 'active' : ''
+    ].filter(Boolean).join(' ');
+    const onclick = reached ? ` onclick="setViewStage('${o.id}',${i})"` : '';
+    return `<button type="button" class="step ${cls}" ${reached?'':'disabled'}${onclick}>
+      <span class="bar"></span>
+      <span class="lbl">${s.label}</span>
+    </button>`;
   }).join('') + '</div>';
 }
 
@@ -832,8 +855,23 @@ function stagePanel(o, targetIdx){
   const pastNote = !isCurrent ? `<p class="note" style="color:var(--sub);">이미 지난 단계입니다. 내용은 여전히 수정할 수 있어요.</p>` : '';
 
   if(s.key==='inquiry'){
-    if(o.stageIdx===STAGE_IDX.inquiry) advance(o, '자동 · 접수 확인');
-    return '';
+    if(isCurrent && o.stageIdx===STAGE_IDX.inquiry){ advance(o, '자동 · 접수 확인'); return ''; }
+    const links = o.referenceLinks || [];
+    return `<div class="stage-panel">
+      <div class="sp-head"><h3>문의 접수 내용</h3>${badgeHtml('auto')}</div>
+      ${pastNote}
+      <div class="row2">
+        <div class="field"><label>고객/학교(팀)명</label><input value="${o.customer}" disabled></div>
+        <div class="field"><label>담당자 연락처</label><input value="${o.contact||'미입력'}" disabled></div>
+      </div>
+      <div class="field"><label>예상 수량</label><input value="${o.qty}" disabled></div>
+      <div class="field"><label>디자인 요청사항</label><textarea disabled>${o.note||'입력된 요청사항이 없습니다.'}</textarea></div>
+      <div class="field"><label>고객이 첨부한 레퍼런스 이미지 (구글 드라이브)</label>
+        ${links.length ? `<div style="display:flex;flex-direction:column;gap:4px;">
+          ${links.map((l,i)=>`<a href="${l}" target="_blank" rel="noopener" style="font-size:12.5px;color:var(--coral);">레퍼런스 이미지 ${i+1} 열기 ↗</a>`).join('')}
+        </div>` : `<p class="note">첨부된 레퍼런스 이미지가 없습니다.</p>`}
+      </div>
+    </div>`;
   }
 
   if(s.key==='draft'){
@@ -1230,24 +1268,16 @@ function renderLog(o){
   return `<div class="log"><h4>진행 기록</h4><ul>${o.log.slice(0,8).map(l=>`<li><span class="t">${l.t}</span><span>${l.text}</span></li>`).join('')}</ul></div>`;
 }
 
-function setViewStage(id, idx){ viewStage[id] = idx; render(); }
-
-function stageNav(o){
-  const maxIdx = Math.min(o.stageIdx, STAGES.length-1);
-  const targetIdx = viewStage[o.id]!==undefined ? Math.min(viewStage[o.id], maxIdx) : maxIdx;
-  if(maxIdx<=0 && !isDone(o)) return {html:'', targetIdx};
-  const pills = STAGES.slice(0, maxIdx+1).map((st,idx)=>{
-    const active = idx===targetIdx;
-    return `<button class="btn ${active?'primary':'ghost'} sm" style="padding:4px 9px;font-size:11.5px;flex-shrink:0;" onclick="event.stopPropagation();setViewStage('${o.id}',${idx})">${st.label}</button>`;
-  }).join('');
-  return {html:`<div style="display:flex;gap:6px;overflow-x:auto;padding:0 16px 10px;">${pills}</div>`, targetIdx};
+function setViewStage(id, idx){
+  openId = id; // clicking a stage (bar or label — same control) opens the card to reveal it
+  viewStage[id] = idx;
+  render();
 }
 
 function orderCard(o){
   const open = openId===o.id;
   const s = isDone(o) ? {label:'완료', type:'done'} : currentStage(o);
   const badge = isDone(o) ? '<span class="badge done">완료</span>' : badgeHtml(s.type);
-  const nav = stageNav(o);
   return `<div class="card ${open?'open':''}" data-id="${o.id}">
     <div class="card-head" onclick="toggleCard('${o.id}')">
       <div class="card-title">
@@ -1258,11 +1288,10 @@ function orderCard(o){
       <button class="btn ghost sm" style="flex-shrink:0;color:var(--coral)" onclick="event.stopPropagation();deleteOrder('${o.id}')" aria-label="삭제">삭제</button>
       <span class="chev" style="flex-shrink:0;">▸</span>
     </div>
-    ${renderProgress(o)}
+    ${renderStepper(o)}
     <div class="card-body">
       ${o.note?`<p class="note" style="margin-bottom:12px;">요청사항: ${o.note}</p>`:''}
-      ${nav.html}
-      ${stagePanel(o, nav.targetIdx)}
+      ${stagePanel(o, getTargetIdx(o))}
       ${renderLog(o)}
     </div>
   </div>`;
