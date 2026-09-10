@@ -438,25 +438,59 @@ async function saveQuotesArchive(){
     else localStorage.setItem(QUOTES_LS_KEY, JSON.stringify(quotesArchive));
   }catch(e){ console.error('견적서 보관함 저장 실패', e); }
 }
-function exportBackup(){
-  const blob = new Blob([JSON.stringify(orders, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `aav_orders_backup_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
+// --- File saving --------------------------------------------------------
+// When this page runs inside the Claude Artifact viewer, plain <a download>
+// links and script-driven blob downloads are inert for the viewer — files
+// must instead be handed over through the `downloads` capability. Outside
+// that sandbox (opened as a normal local/served HTML file) window.claude
+// doesn't exist, so this falls back to a classic blob-link download.
+function dataUrlToBlob(dataUrl){
+  const [meta, b64] = dataUrl.split(',');
+  const mime = (/data:(.*?);base64/.exec(meta) || [])[1] || 'application/octet-stream';
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], {type: mime});
 }
-function cleanupDoneOrders(){
+async function saveFile(filename, data){
+  if(window.claude && window.claude.use){
+    try{
+      const downloads = await window.claude.use('downloads');
+      if(downloads){
+        await downloads.save({filename, data});
+        return true;
+      }
+    }catch(e){
+      if(e && e.code === 'declined') return false;
+      console.error('파일 저장 실패', e);
+      alert('파일 저장에 실패했습니다: ' + (e && e.message ? e.message : e));
+      return false;
+    }
+  }
+  try{
+    const blob = data instanceof Blob ? data : new Blob([data]);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    return true;
+  }catch(e){ console.error(e); return false; }
+}
+
+async function exportBackup(){
+  const blob = new Blob([JSON.stringify(orders, null, 2)], {type:'application/json'});
+  await saveFile(`aav_orders_backup_${new Date().toISOString().slice(0,10)}.json`, blob);
+}
+async function cleanupDoneOrders(){
   const done = orders.filter(isDone);
   if(!done.length){ alert('완료된 주문이 없습니다.'); return; }
   if(!confirm(`완료된 주문 ${done.length}건을 백업 파일로 먼저 내보낸 뒤, 목록에서 삭제합니다.\n(이미지·파일이 포함된 완료 주문이 저장 용량을 많이 차지하니 정리하면 도움이 됩니다. 견적서 기록은 "견적서 보관함"에 별도로 남아있어요.)\n계속할까요?`)) return;
   const blob = new Blob([JSON.stringify(done, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `aav_done_orders_${new Date().toISOString().slice(0,10)}.json`;
-  a.click();
+  const backedUp = await saveFile(`aav_done_orders_${new Date().toISOString().slice(0,10)}.json`, blob);
+  if(!backedUp && !confirm('백업 파일 저장이 취소되었습니다. 그래도 완료 주문을 목록에서 정리할까요? (다시 볼 수 없게 됩니다)')) return;
   orders = orders.filter(o=>!isDone(o));
   saveOrders(); render();
-  alert('완료된 주문을 백업하고 목록에서 정리했습니다. 필요하면 "백업 불러오기"로 다시 불러올 수 있어요.');
+  alert('완료된 주문을 정리했습니다.' + (backedUp ? ' 필요하면 "백업 불러오기"로 다시 불러올 수 있어요.' : ''));
 }
 function importBackup(input){
   const file = input.files[0];
@@ -875,7 +909,7 @@ function stagePanel(o, targetIdx){
         <input type="file" accept="image/*,.pdf,.xlsx,.xls,.doc,.docx" multiple onchange="uploadWorkOrderFile('${o.id}', this)">
         ${wo.files && wo.files.length ? `<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
           ${wo.files.map((f,i)=>`<div style="display:flex;align-items:center;gap:8px;">
-            <a href="${f.dataUrl}" download="${f.name}" style="font-size:12.5px;color:var(--navy);flex:1;">📎 ${f.name}</a>
+            <button class="btn ghost sm" style="font-size:12.5px;color:var(--navy);flex:1;text-align:left;justify-content:flex-start;" onclick="downloadWorkOrderFile('${o.id}',${i})">📎 ${f.name}</button>
             <button class="btn ghost sm" style="color:var(--coral)" onclick="removeWorkOrderFile('${o.id}',${i})">삭제</button>
           </div>`).join('')}
         </div>` : `<p class="note">업로드된 파일이 없습니다.</p>`}
@@ -1067,6 +1101,12 @@ function removeWorkOrderFile(id, idx){
   o.workOrder.files.splice(idx, 1);
   saveOrders(); render();
 }
+async function downloadWorkOrderFile(id, idx){
+  const o = orders.find(x=>x.id===id);
+  const f = o && o.workOrder.files && o.workOrder.files[idx];
+  if(!f) return;
+  await saveFile(f.name, dataUrlToBlob(f.dataUrl));
+}
 function setFactory(id, field, val){
   const o = orders.find(x=>x.id===id);
   o.factory[field] = val;
@@ -1115,7 +1155,7 @@ async function downloadPDF(elementId, filename){
       pdf.addImage(imgData, 'PNG', margin, y, imgW, imgH);
       heightLeft -= (pageH - margin*2);
     }
-    pdf.save(filename);
+    await saveFile(filename, pdf.output('blob'));
   }catch(e){
     console.error(e);
     alert('PDF 생성에 실패했습니다. 다시 시도해주세요.');
